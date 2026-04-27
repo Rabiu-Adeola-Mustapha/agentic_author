@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { usePipelineStore } from '@/store/pipeline.store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +11,9 @@ import { Download, Check, AlertCircle } from 'lucide-react';
 
 const STAGES = ['prompt', 'plan', 'research', 'writing', 'evaluation', 'done'];
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: projectId } = use(params);
+  
   const [project, setProject] = useState<any>(null);
   const [editedContent, setEditedContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -22,14 +24,14 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const res = await fetch(`/api/projects/${params.id}`);
+        const res = await fetch(`/api/projects/${projectId}`);
         if (res.ok) {
           const data = await res.json();
           setProject(data);
           setEditedContent(data.output?.content || '');
 
           if (data.status === 'running' || data.status === 'draft') {
-            startPolling(params.id);
+            startPolling(projectId);
           }
         }
       } catch (error) {
@@ -44,7 +46,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     return () => {
       stopPolling();
     };
-  }, [params.id, startPolling, stopPolling]);
+  }, [projectId, startPolling, stopPolling]);
 
   const stageIndex = STAGES.indexOf((currentStage || project?.currentStage) as string);
   const progress = Math.max(0, ((stageIndex + 1) / STAGES.length) * 100);
@@ -52,7 +54,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const handleExport = async (format: 'pdf' | 'docx') => {
     setExporting(true);
     try {
-      const res = await fetch(`/api/export/${params.id}?format=${format}`);
+      const res = await fetch(`/api/export/${projectId}?format=${format}`);
       if (res.ok) {
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);

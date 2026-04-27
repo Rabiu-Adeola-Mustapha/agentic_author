@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { connectDB } from '@/lib/db/mongoose';
 import { UserModel } from '@/lib/db/models/User';
 import { OtpCodeModel } from '@/lib/db/models/OtpCode';
+import logger from '@/lib/logger';
 
 const verifyOtpSchema = z.object({
   email: z.string().email(),
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
 
     const isOtpCorrect = await bcrypt.compare(otp, otpCode.otp);
     if (!isOtpCorrect) {
+      logger.warn('Invalid OTP attempt', { email });
       return NextResponse.json(
         { error: 'Invalid OTP' },
         { status: 401 }
@@ -46,6 +48,11 @@ export async function POST(request: NextRequest) {
 
     await OtpCodeModel.deleteOne({ _id: otpCode._id });
 
+    logger.info('Email verified successfully', {
+      email,
+      timestamp: new Date().toISOString(),
+    });
+
     return NextResponse.json(
       { verified: true, message: 'Email verified successfully' },
       { status: 200 }
@@ -53,7 +60,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }

@@ -20,7 +20,10 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const projects = await ProjectModel.find({ userId: session.user.id })
+    const projects = await ProjectModel.find({ 
+      userId: session.user.id,
+      deleted: { $ne: true }
+    })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }

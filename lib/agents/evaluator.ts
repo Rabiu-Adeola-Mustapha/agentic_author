@@ -1,14 +1,14 @@
-import { BaseAgent, Tool } from './base-agent';
-import { AgentInput, AgentResult, EvaluationData } from '@/types';
+import { BaseAgent } from './base-agent';
+import { AgentInput, AgentResult, EvaluationData, ContentCategory } from '@/types';
 import { connectDB } from '@/lib/db/mongoose';
 import { ProjectModel } from '@/lib/db/models/Project';
 import { PromptModel } from '@/lib/db/models/Prompt';
+import { PlanModel } from '@/lib/db/models/Plan';
+import { ResearchModel } from '@/lib/db/models/Research';
 import { OutputModel } from '@/lib/db/models/Output';
 import { EvaluationModel } from '@/lib/db/models/Evaluation';
-import {
-  validateAgentOutput,
-  EvaluationDataSchema,
-} from '@/lib/guardrails/output-validator';
+import { evaluationOutputSchema } from '@/lib/guardrails/output-validator';
+import { MODELS } from '@/lib/config/models';
 
 interface EvaluatorInput extends AgentInput {
   outputId: string;
@@ -16,117 +16,118 @@ interface EvaluatorInput extends AgentInput {
 
 export class Evaluator extends BaseAgent<EvaluatorInput, EvaluationData> {
   readonly name = 'Evaluator';
-  readonly instructions = `You are a professional content evaluator. Your task is to evaluate generated content on multiple dimensions.
-Evaluate the content on:
-1. Alignment Score (0-100): How well does the content match the original prompt and intent?
-2. Quality Score (0-100): How well-written, coherent, and professional is the content?
-3. Overall Score (0-100): Average of alignment and quality
+  protected readonly model = MODELS.EVALUATOR;
 
-Also identify top issues and suggestions for improvement.
-Return ONLY valid JSON with the required evaluation structure.`;
+  buildSystemMessage(category: ContentCategory): string {
+    return `IDENTITY AND ROLE:
+The model is a ruthless, meticulous senior editor and QA specialist. It does not write or fix content — it evaluates content against strict criteria, scoring it objectively and identifying every flaw, inconsistency, or deviation from the brief.
 
-  readonly tools: Tool[] = [];
+PRIMARY TASK:
+Review the complete generated content against the finalPrompt (the brief), the formattingRules, and the keyInsights. Calculate three scores out of 100: an overall score, an alignmentScore (how well it followed the brief and formatting rules), and a qualityScore (the quality of the prose, grammar, and flow). List all specific issues found. Provide actionable suggestions for improvement.
+
+OUTPUT CONTRACT:
+Respond with a valid JSON object. The object must have exactly five keys:
+- score: integer between 0 and 100.
+- alignmentScore: integer between 0 and 100.
+- qualityScore: integer between 0 and 100.
+- issues: an array of strings detailing specific problems found.
+- suggestions: an array of strings detailing actionable improvements.
+Do NOT include anything outside the JSON object.
+
+QUALITY STANDARDS:
+Be incredibly strict. A score of 100 means the content is publication-ready and flawless. A score of 80 is acceptable but needs minor edits. A score below 80 means the content failed to meet professional standards. If an insight from the keyInsights list was required but missing, penalise the alignmentScore heavily. If the formatting rules were ignored, penalise the alignmentScore heavily. Issues must be specific ("Paragraph 3 uses passive voice heavily") not general ("The writing is sometimes passive").
+
+CATEGORY-SPECIFIC RULES:
+${this.buildCategoryContext(category)}
+For thesis and journal categories: strictly evaluate the adherence to academic tone and correct usage of citations. If citations are missing or hallucinated, the alignmentScore must be below 60.
+For book and screenplay categories: evaluate the pacing, character consistency, and narrative engagement. If the text reads like a textbook rather than a narrative, the qualityScore must be below 70.
+For educational categories: evaluate clarity, pedagogical value, and the alignment with stated learning objectives.
+
+FORBIDDEN BEHAVIOURS:
+Do not be polite or encouraging — be brutally objective. Do not provide a score of 100 if there are any issues listed. Do not output anything outside the JSON structure. Do not evaluate the quality of the prompt or the plan, only evaluate the final content.`;
+  }
 
   async run(input: EvaluatorInput): Promise<AgentResult<EvaluationData>> {
     try {
+      await this.updateProjectStage(input.projectId, 'evaluation');
       await connectDB();
+      
+      const project = await ProjectModel.findById(input.projectId);
+      if (!project) throw new Error('Project not found');
+
+      const promptData = await PromptModel.findById(project.promptId);
+      if (!promptData) throw new Error('Prompt not found');
+
+      const plan = await PlanModel.findById(project.planId);
+      if (!plan) throw new Error('Plan not found');
+
+      const research = await ResearchModel.findById(project.researchId);
+      if (!research) throw new Error('Research not found');
 
       const output = await OutputModel.findById(input.outputId);
-      if (!output) {
-        return { success: false, error: 'Output not found' };
-      }
+      if (!output) throw new Error('Output not found');
 
-      const prompt = await PromptModel.findById(
-        (await ProjectModel.findById(input.projectId))?.promptId
-      );
-      if (!prompt) {
-        return { success: false, error: 'Prompt not found' };
-      }
+      const systemMessage = this.buildSystemMessage(project.category);
 
-      const evaluationPrompt = `You are a professional content evaluator. Evaluate this generated content on three dimensions:
+      let userPrompt = `FINAL PROMPT (The Brief):\n${promptData.finalPrompt}\n\n`;
+      userPrompt += `FORMATTING RULES:\n${JSON.stringify(plan.formattingRules, null, 2)}\n\n`;
+      userPrompt += `KEY INSIGHTS:\n${research.keyInsights.join('\n')}\n\n`;
+      userPrompt += `=========================\n`;
+      userPrompt += `GENERATED CONTENT TO EVALUATE:\n${output.content}\n`;
 
-1. Alignment Score (0-100): How well does the content match the original prompt and intent?
-2. Quality Score (0-100): How well-written, coherent, and professional is the content?
-3. Overall Score (0-100): Average of alignment and quality
+      let result = await this.callLLM(systemMessage, userPrompt);
+      let totalTokens = result.usage.totalTokens;
 
-Also identify:
-- Top 3 issues or weaknesses (if any)
-- Top 3 suggestions for improvement
-
-Return ONLY valid JSON matching this structure exactly:
-{
-  "score": <overall_score>,
-  "alignmentScore": <alignment_score>,
-  "qualityScore": <quality_score>,
-  "issues": ["issue1", "issue2", "issue3"],
-  "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
-}`;
-
-      const contentPreview = output.content.slice(0, 3000);
-
-      const evaluationSystemPrompt = `You are an expert content evaluator for AI-generated content. Evaluate based on accuracy, clarity, structure, and alignment with requirements.`;
-
-      const result = await this.callLLM(
-        evaluationSystemPrompt,
-        `Original Intent: ${prompt.finalPrompt}
-
-Generated Content (first 3000 chars):
-${contentPreview}
-
-${evaluationPrompt}`,
-        []
-      );
-
-      let parsed: unknown;
+      let parsed: EvaluationData;
       try {
-        parsed = JSON.parse(result.text);
-      } catch {
-        try {
-          const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) {
-            throw new Error('No JSON found in response');
-          }
-          parsed = JSON.parse(jsonMatch[0]);
-        } catch (inner) {
-          return {
-            success: false,
-            error: `Failed to parse evaluation: ${(inner as Error).message}`,
-            tokensUsed: result.usage.totalTokens,
-          };
-        }
+        parsed = this.parseJsonResponse(result.text, evaluationOutputSchema) as unknown as EvaluationData;
+      } catch (error) {
+        userPrompt += "\nYour previous response could not be parsed as valid JSON. Return only a valid JSON object with the exact keys score, alignmentScore, qualityScore, issues, and suggestions. No other text.";
+        result = await this.callLLM(systemMessage, userPrompt);
+        totalTokens += result.usage.totalTokens;
+        parsed = this.parseJsonResponse(result.text, evaluationOutputSchema) as unknown as EvaluationData;
       }
 
-      const validated = validateAgentOutput(parsed as EvaluationData, EvaluationDataSchema);
+      const passedThreshold = parsed.score >= 80 && parsed.alignmentScore >= 80 && parsed.qualityScore >= 80;
 
       const evaluation = await EvaluationModel.create({
-        outputId: input.outputId,
         projectId: input.projectId,
-        score: validated.score,
-        alignmentScore: validated.alignmentScore,
-        qualityScore: validated.qualityScore,
-        issues: validated.issues,
-        suggestions: validated.suggestions,
+        outputId: input.outputId,
+        score: parsed.score,
+        alignmentScore: parsed.alignmentScore,
+        qualityScore: parsed.qualityScore,
+        issues: parsed.issues,
+        suggestions: parsed.suggestions,
+        passedThreshold,
       });
 
-      await ProjectModel.updateOne(
-        { _id: input.projectId },
-        {
-          evaluationId: evaluation._id,
-          currentStage: 'done',
-          status: 'completed',
-        }
-      );
+      project.evaluationId = evaluation._id;
+      
+      if (passedThreshold) {
+        project.status = 'completed';
+        project.currentStage = 'done';
+      } else {
+        project.status = 'failed';
+        project.currentStage = 'failed';
+      }
+      
+      await project.save();
 
       return {
         success: true,
-        data: validated,
-        tokensUsed: result.usage.totalTokens,
+        data: {
+          score: parsed.score,
+          alignmentScore: parsed.alignmentScore,
+          qualityScore: parsed.qualityScore,
+          issues: parsed.issues,
+          suggestions: parsed.suggestions,
+        },
+        tokensUsed: totalTokens,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }

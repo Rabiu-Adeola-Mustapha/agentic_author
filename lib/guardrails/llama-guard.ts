@@ -1,4 +1,5 @@
 import axios from "axios";
+import { MODELS } from "@/lib/config/models";
 
 export interface LlamaGuardResult {
   isUnsafe: boolean;
@@ -18,8 +19,8 @@ class LlamaGuardClient {
 
   constructor(
     endpoint: string = process.env.LLAMA_GUARD_ENDPOINT ||
-      "https://openrouter.io/api/v1/chat/completions",
-    modelName: string = process.env.LLAMA_GUARD_MODEL || "meta-llama/llama-guard-7b",
+      "https://openrouter.ai/api/v1/chat/completions",
+    modelName: string = process.env.LLAMA_GUARD_MODEL || MODELS.GUARDRAIL_FAST,
     apiKey: string = process.env.OPENROUTER_API_KEY || ""
   ) {
     this.endpoint = endpoint;
@@ -199,55 +200,3 @@ export async function isLlamaGuardAvailable(): Promise<boolean> {
   }
 }
 
-      throw new Error("Failed to analyze with safety model");
-    }
-  }
-
-  /**
-   * Main analysis function
-   */
-  async analyze(text: string): Promise<LlamaGuardResult> {
-    if (this.useOllama) {
-      return this.analyzeWithOllama(text);
-    } else {
-      return this.analyzeWithHuggingFace(text);
-    }
-  }
-
-  /**
-   * Batch analyze multiple prompts
-   */
-  async analyzeBatch(texts: string[]): Promise<LlamaGuardResult[]> {
-    return Promise.all(texts.map((text) => this.analyze(text)));
-  }
-}
-
-// Singleton instance
-let llamaGuardInstance: LlamaGuardClient;
-
-export function getLlamaGuardClient(): LlamaGuardClient {
-  if (!llamaGuardInstance) {
-    llamaGuardInstance = new LlamaGuardClient();
-  }
-  return llamaGuardInstance;
-}
-
-export async function analyzeWithLlamaGuard(
-  text: string,
-): Promise<LlamaGuardResult> {
-  const client = getLlamaGuardClient();
-  const available = await client.isAvailable();
-
-  if (!available) {
-    throw new Error(
-      "Llama Guard not available. Make sure Ollama is running or Hugging Face endpoint is configured.",
-    );
-  }
-
-  return client.analyze(text);
-}
-
-export async function isLlamaGuardAvailable(): Promise<boolean> {
-  const client = getLlamaGuardClient();
-  return client.isAvailable();
-}

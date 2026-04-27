@@ -3,7 +3,9 @@ export type ContentCategory =
   | 'screenplay'
   | 'thesis'
   | 'journal'
-  | 'educational';
+  | 'educational'
+  | 'article'
+  | 'social_media';
 
 export type PipelineStage =
   | 'idle'
@@ -40,9 +42,15 @@ export interface PromptData {
 
 export interface PlanData {
   contentType: string;
-  structure: string[];
+  structure: {
+    key: string;
+    title: string;
+    description: string;
+    estimatedWords: number;
+  }[];
   formattingRules: Record<string, string>;
   contentStrategy: string;
+  searchQueries: string[];
 }
 
 export interface ResearchData {

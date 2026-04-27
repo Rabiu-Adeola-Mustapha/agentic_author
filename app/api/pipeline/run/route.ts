@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       status: { $in: ['running', 'completed'] },
     });
 
-    const limit = user.subscription.plan === 'pro' ? Infinity : 2;
+    const limit = (user as any).subscription?.plan === 'pro' ? Infinity : 2;
     if (generationsToday >= limit) {
       return NextResponse.json(
         {
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }

@@ -10,10 +10,11 @@ import { EvaluationModel } from '@/lib/db/models/Evaluation';
 import mongoose from 'mongoose';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: projectId } = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -22,7 +23,7 @@ export async function GET(
     await connectDB();
 
     const project = await ProjectModel.findOne({
-      _id: params.id,
+      _id: projectId,
       userId: session.user.id,
     }).lean();
 
@@ -62,16 +63,17 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: projectId } = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },
         { status: 400 }
@@ -80,12 +82,12 @@ export async function DELETE(
 
     await connectDB();
 
-    const result = await ProjectModel.deleteOne({
-      _id: params.id,
-      userId: session.user.id,
-    });
+    const result = await ProjectModel.updateOne(
+      { _id: projectId, userId: session.user.id },
+      { $set: { deleted: true } }
+    );
 
-    if (result.deletedCount === 0) {
+    if (result.modifiedCount === 0) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }

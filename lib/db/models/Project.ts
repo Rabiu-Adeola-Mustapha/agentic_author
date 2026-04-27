@@ -14,6 +14,7 @@ export interface IProject extends Document {
   evaluationId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  deleted?: boolean;
 }
 
 const projectSchema = new Schema<IProject>(
@@ -47,6 +48,10 @@ const projectSchema = new Schema<IProject>(
     researchId: Schema.Types.ObjectId,
     outputId: Schema.Types.ObjectId,
     evaluationId: Schema.Types.ObjectId,
+    deleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string;
 
 if (!PAYSTACK_SECRET_KEY) {
   throw new Error('PAYSTACK_SECRET_KEY environment variable is not defined');

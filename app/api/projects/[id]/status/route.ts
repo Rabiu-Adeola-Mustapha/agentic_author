@@ -5,16 +5,18 @@ import { ProjectModel } from '@/lib/db/models/Project';
 import mongoose from 'mongoose';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    const { id: projectId } = await params;
+
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },
         { status: 400 }
@@ -24,7 +26,7 @@ export async function GET(
     await connectDB();
 
     const project = await ProjectModel.findOne({
-      _id: params.id,
+      _id: projectId,
       userId: session.user.id,
     }).lean();
 

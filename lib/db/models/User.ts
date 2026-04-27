@@ -10,6 +10,8 @@ export interface IUser extends Document {
     status: 'active' | 'inactive';
     expiresAt?: Date;
   };
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
 }
 
 const userSchema = new Schema<IUser>(
@@ -46,11 +48,19 @@ const userSchema = new Schema<IUser>(
       type: Date,
       default: Date.now,
     },
+    passwordResetToken: {
+      type: String,
+      default: null,
+    },
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: false }
 );
 
-userSchema.index({ email: 1 });
+// Redundant index removed
 
 export const UserModel =
   mongoose.models.User ||

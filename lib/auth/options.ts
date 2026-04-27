@@ -25,10 +25,6 @@ export const authOptions: NextAuthConfig = {
           return null;
         }
 
-        if (!user.isVerified) {
-          throw new Error('Email not verified');
-        }
-
         const isPasswordCorrect = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash
@@ -36,6 +32,12 @@ export const authOptions: NextAuthConfig = {
 
         if (!isPasswordCorrect) {
           return null;
+        }
+
+        if (!user.isVerified) {
+          const { resendOTP } = await import('@/lib/auth/otp');
+          await resendOTP(user.email);
+          throw new Error('Email not verified');
         }
 
         return {

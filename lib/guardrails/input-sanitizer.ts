@@ -1,12 +1,15 @@
 export function sanitizePrompt(input: string): string {
   const injectionPatterns = [
-    /ignore (all |previous |prior )?instructions?/gi,
+    /ignore previous instructions/gi,
+    /ignore all instructions/gi,
     /you are now/gi,
-    /disregard (your|all)/gi,
-    /act as (a |an )?/gi,
+    /disregard your/gi,
+    /act as/gi,
     /system prompt/gi,
+    /new instructions/gi,
     /<\/?script[^>]*>/gi,
     /javascript:/gi,
+    /[^a-zA-Z0-9\s.,?!'"()[\]{}:;\-_+=*/\\]{6,}/g, // run of >5 special characters
   ];
 
   let clean = input;

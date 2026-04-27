@@ -36,11 +36,32 @@ export default function LoginForm() {
         redirect: false,
       });
 
+      console.log('Login attempt result:', result);
+
       if (result?.error) {
+        // Fallback check: even if the error is masked, check if the user is unverified
+        try {
+          const statusRes = await fetch(`/api/auth/status?email=${encodeURIComponent(formData.email)}`);
+          const statusData = await statusRes.json();
+
+          if (statusData.exists && !statusData.isVerified) {
+            toast({
+              title: 'Verification Required',
+              description: 'Your email is not verified. Redirecting to verification page...',
+              variant: 'destructive',
+            });
+            window.location.href = `/verify-otp?email=${encodeURIComponent(formData.email)}`;
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to check verification status:', e);
+        }
+
+        // Standard error handling
         toast({
           title: 'Error',
-          description: result.error || 'Login failed',
-          variant: 'destructive' as const,
+          description: result.error.includes('Read more') ? 'Invalid email or password' : result.error,
+          variant: 'destructive',
         });
       } else {
         toast({
@@ -76,7 +97,12 @@ export default function LoginForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Password</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium">Password</label>
+          <Link href="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300">
+            Forgot?
+          </Link>
+        </div>
         <Input
           type="password"
           name="password"

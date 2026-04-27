@@ -9,16 +9,17 @@ import { generatePdf } from '@/lib/export/to-pdf';
 import mongoose from 'mongoose';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: projectId } = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const format = request.nextUrl.searchParams.get('format');
+    const format = req.nextUrl.searchParams.get('format');
     if (!format || !['pdf', 'docx'].includes(format)) {
       return NextResponse.json(
         { error: 'Invalid format. Use pdf or docx.' },
@@ -26,7 +27,7 @@ export async function GET(
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },
         { status: 400 }
@@ -36,7 +37,7 @@ export async function GET(
     await connectDB();
 
     const project = await ProjectModel.findOne({
-      _id: params.id,
+      _id: projectId,
       userId: session.user.id,
     });
 
@@ -96,7 +97,7 @@ export async function GET(
       filename = `${project.title}.pdf`;
     }
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,

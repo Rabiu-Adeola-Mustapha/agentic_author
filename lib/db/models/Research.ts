@@ -5,6 +5,7 @@ export interface IResearch extends Document {
   planId: mongoose.Types.ObjectId;
   sources: Array<{ title: string; url: string; snippet: string }>;
   keyInsights: string[];
+  citationMap: Record<string, number>;
   createdAt: Date;
 }
 
@@ -28,6 +29,11 @@ const researchSchema = new Schema<IResearch>(
       },
     ],
     keyInsights: [String],
+    citationMap: {
+      type: Map,
+      of: Number,
+      default: {},
+    },
     createdAt: {
       type: Date,
       default: Date.now,

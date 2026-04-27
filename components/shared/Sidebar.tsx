@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { LayoutDashboard, FileText, CreditCard, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, LogOut, BarChart3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export default function Sidebar() {
@@ -13,6 +13,7 @@ export default function Sidebar() {
   const links = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/projects', label: 'Projects', icon: FileText },
+    { href: '/dashboard/metrics', label: 'Metrics', icon: BarChart3 },
     { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
   ];
 
@@ -30,7 +31,9 @@ export default function Sidebar() {
         <nav className="space-y-2">
           {links.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname.startsWith(link.href);
+            const isActive = link.href === '/dashboard' 
+              ? pathname === '/dashboard' 
+              : pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}
