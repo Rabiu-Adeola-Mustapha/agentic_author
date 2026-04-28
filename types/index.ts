@@ -35,8 +35,13 @@ export interface AgentResult<T = unknown> {
 }
 
 export interface PromptData {
-  rawInput: string;
-  structuredIntent: Record<string, string>;
+  structuredIntent: {
+    topic: string;
+    audience: string;
+    tone: string;
+    length: string;
+    keyRequirements: string[];
+  };
   finalPrompt: string;
 }
 
@@ -82,3 +87,43 @@ export interface CategoryConfig {
   citationRequired: boolean;
   maxWordsPerTier: { free: number; pro: number };
 }
+
+export interface SerializedProject {
+  _id: string;
+  userId: string;
+  title: string;
+  category: ContentCategory;
+  status: ProjectStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OutputSection {
+  key: string;
+  title: string;
+  content: string;
+  wordCount?: number;
+}
+
+export interface SerializedOutput {
+  _id: string;
+  projectId: string;
+  content: string;
+  sections: OutputSection[];
+  wordCount: number;
+  metadata?: {
+    targetWordCount?: number;
+  };
+}
+
+export interface SerializedEvaluation {
+  _id: string;
+  projectId: string;
+  score: number;
+  alignmentScore: number;
+  qualityScore: number;
+  issues: string[];
+  suggestions: string[];
+  passedThreshold: boolean;
+}
+

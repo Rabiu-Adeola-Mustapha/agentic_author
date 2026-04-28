@@ -1,103 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
-import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
-import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { Plus } from 'lucide-react';
 
-export default function Navbar() {
-  const { data: session } = useSession();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+export function Navbar() {
+  const pathname = usePathname();
+
+  // Simple logic to derive page title from pathname
+  let pageTitle = 'Dashboard';
+  if (pathname.includes('/projects/new')) {
+    pageTitle = 'New Project';
+  } else if (pathname.includes('/projects')) {
+    pageTitle = 'Projects';
+  } else if (pathname.includes('/billing')) {
+    pageTitle = 'Billing';
+  }
 
   return (
-    <nav className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">✨</span>
-            <span className="font-sora font-bold text-lg text-indigo-400">
-              Agentic Author
-            </span>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-4">
-            {session ? (
-              <>
-                <Link href="/dashboard">
-                  <Button variant="ghost">Dashboard</Button>
-                </Link>
-                <Link href="/dashboard/billing">
-                  <Button variant="ghost">Billing</Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  onClick={() => signOut({ redirectTo: '/' })}
-                >
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link href="/login">
-                  <Button variant="ghost">Login</Button>
-                </Link>
-                <Link href="/signup">
-                  <Button className="bg-indigo-600 hover:bg-indigo-700">
-                    Sign Up
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-
-          <button
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="md:hidden pb-4 space-y-2">
-            {session ? (
-              <>
-                <Link href="/dashboard" className="block">
-                  <Button variant="ghost" className="w-full justify-start">
-                    Dashboard
-                  </Button>
-                </Link>
-                <Link href="/dashboard/billing" className="block">
-                  <Button variant="ghost" className="w-full justify-start">
-                    Billing
-                  </Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => signOut({ redirectTo: '/' })}
-                >
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="block">
-                  <Button variant="ghost" className="w-full justify-start">
-                    Login
-                  </Button>
-                </Link>
-                <Link href="/signup" className="block">
-                  <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
-                    Sign Up
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </nav>
+    <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-zinc-800 bg-zinc-900 px-6">
+      <h1 className="font-sora text-lg font-semibold text-zinc-100">
+        {pageTitle}
+      </h1>
+      <Link
+        href="/projects/new"
+        className="flex items-center gap-2 rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
+      >
+        <Plus className="h-4 w-4" />
+        New Project
+      </Link>
+    </header>
   );
 }

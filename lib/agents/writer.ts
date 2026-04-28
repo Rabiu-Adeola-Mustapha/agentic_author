@@ -105,6 +105,7 @@ Do not write an introduction or conclusion to the overall document unless you ar
       const output = await OutputModel.create({
         projectId: input.projectId,
         planId: plan._id,
+        researchId: input.researchId,
         content: fullContent.trim(),
         sections: allSections,
         wordCount: totalWordCount,

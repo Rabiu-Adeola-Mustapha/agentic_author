@@ -1,60 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/options';
+import { requireSession } from '@/lib/auth/session';
 import { connectDB } from '@/lib/db/mongoose';
 import { ProjectModel } from '@/lib/db/models/Project';
-import { PromptModel } from '@/lib/db/models/Prompt';
-import { PlanModel } from '@/lib/db/models/Plan';
-import { ResearchModel } from '@/lib/db/models/Research';
 import { OutputModel } from '@/lib/db/models/Output';
 import { EvaluationModel } from '@/lib/db/models/Evaluation';
-import mongoose from 'mongoose';
 
 export async function GET(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: projectId } = await params;
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const session = await requireSession();
     await connectDB();
 
-    const project = await ProjectModel.findOne({
-      _id: projectId,
-      userId: session.user.id,
+    const { id: projectId } = await params;
+    
+    // Using lean() for faster read operations
+    const project = await ProjectModel.findOne({ 
+      _id: projectId, 
+      userId: session.user?.id, 
+      deleted: false 
     }).lean();
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const projectWithData: any = { ...project };
+    // If project is completed, fetch output and evaluation
+    let output = null;
+    let evaluation = null;
 
-    if (project.promptId) {
-      projectWithData.prompt = await PromptModel.findById(project.promptId).lean();
-    }
-    if (project.planId) {
-      projectWithData.plan = await PlanModel.findById(project.planId).lean();
-    }
-    if (project.researchId) {
-      projectWithData.research = await ResearchModel.findById(project.researchId).lean();
-    }
-    if (project.outputId) {
-      projectWithData.output = await OutputModel.findById(project.outputId).lean();
-    }
-    if (project.evaluationId) {
-      projectWithData.evaluation = await EvaluationModel.findById(project.evaluationId).lean();
+    if (project.status === 'completed' || project.status === 'failed') {
+      output = await OutputModel.findOne({ projectId }).lean();
+      evaluation = await EvaluationModel.findOne({ projectId }).lean();
     }
 
-    return NextResponse.json(projectWithData, { status: 200 });
+    return NextResponse.json({
+      project,
+      output,
+      evaluation,
+    });
   } catch (error) {
-    console.error('Project GET error:', error);
+    console.error('Error fetching project:', error);
     return NextResponse.json(
       { error: 'Failed to fetch project' },
       { status: 500 }
@@ -62,46 +49,39 @@ export async function GET(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
+export async function PATCH(
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: projectId } = await params;
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(projectId)) {
-      return NextResponse.json(
-        { error: 'Invalid project ID' },
-        { status: 400 }
-      );
-    }
-
+    const session = await requireSession();
     await connectDB();
 
-    const result = await ProjectModel.updateOne(
-      { _id: projectId, userId: session.user.id },
-      { $set: { deleted: true } }
-    );
+    const { id: projectId } = await params;
+    
+    const body = await request.json();
+    const { title } = body;
 
-    if (result.modifiedCount === 0) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+    if (!title || typeof title !== 'string' || title.trim() === '') {
+      return NextResponse.json({ error: 'Valid title is required' }, { status: 400 });
     }
 
-    return NextResponse.json(
-      { message: 'Project deleted successfully' },
-      { status: 200 }
-    );
+    const updatedProject = await ProjectModel.findOneAndUpdate(
+      { _id: projectId, userId: session.user?.id, deleted: false },
+      { title: title.trim() },
+      { new: true }
+    ).lean();
+
+    if (!updatedProject) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updatedProject);
+
   } catch (error) {
-    console.error('Project DELETE error:', error);
+    console.error('Error updating project:', error);
     return NextResponse.json(
-      { error: 'Failed to delete project' },
+      { error: 'Failed to update project' },
       { status: 500 }
     );
   }

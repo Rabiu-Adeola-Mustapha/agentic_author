@@ -1,32 +1,29 @@
-'use client';
-
-import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
-import Navbar from '@/components/shared/Navbar';
-import Sidebar from '@/components/shared/Sidebar';
+import { getSession } from '@/lib/auth/session';
+import { Sidebar } from '@/components/shared/Sidebar';
+import { Navbar } from '@/components/shared/Navbar';
+import { SessionProvider } from '@/components/providers/SessionProvider';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session, status } = useSession();
+  const session = await getSession();
 
-  if (status === 'unauthenticated') {
+  if (!session) {
     redirect('/login');
   }
 
-  if (status === 'loading') {
-    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center">Loading...</div>;
-  }
-
   return (
-    <main className="min-h-screen bg-zinc-950">
-      <Navbar />
-      <div className="flex">
+    <SessionProvider>
+      <div className="min-h-screen bg-zinc-950 text-zinc-100">
         <Sidebar />
-        <div className="flex-1">{children}</div>
+        <div className="ml-60 flex min-h-screen flex-col">
+          <Navbar />
+          <main className="flex-1 p-8">{children}</main>
+        </div>
       </div>
-    </main>
+    </SessionProvider>
   );
 }

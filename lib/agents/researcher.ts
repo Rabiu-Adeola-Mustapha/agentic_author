@@ -60,10 +60,24 @@ Do not fabricate statistics or invent sources — only report what is present in
       if (depth === 'deep') numQueries = 5;
 
       const queriesToRun = (plan.searchQueries || []).slice(0, numQueries);
-      
-      const searchPromises = queriesToRun.map((q: string) => searchWeb(q));
-      const searchResultsArray = await Promise.all(searchPromises);
-      
+
+      const searchResultsArray: any[] = [];
+      for (let i = 0; i < queriesToRun.length; i++) {
+        const query = queriesToRun[i];
+        console.log(`[Researcher] Searching (${i + 1}/${queriesToRun.length}): ${query}`);
+        
+        const results = await searchWeb(query).catch(() => []);
+        if (results && results.length > 0) {
+          searchResultsArray.push(results);
+        }
+
+        // Sequential delay with jitter to avoid pattern detection
+        if (i < queriesToRun.length - 1) {
+          const delay = 1000 + Math.random() * 1000; // 1-2s delay
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+
       let allResults = searchResultsArray.flat();
       
       // Deduplicate by URL

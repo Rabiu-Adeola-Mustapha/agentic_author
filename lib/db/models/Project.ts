@@ -5,6 +5,7 @@ export interface IProject extends Document {
   userId: mongoose.Types.ObjectId;
   title: string;
   category: ContentCategory;
+  rawPrompt?: string;
   status: ProjectStatus;
   currentStage: PipelineStage;
   promptId?: mongoose.Types.ObjectId;
@@ -30,8 +31,11 @@ const projectSchema = new Schema<IProject>(
     },
     category: {
       type: String,
-      enum: ['book', 'screenplay', 'thesis', 'journal', 'educational'],
+      enum: ['book', 'screenplay', 'thesis', 'journal', 'educational', 'article', 'social_media'],
       required: true,
+    },
+    rawPrompt: {
+      type: String,
     },
     status: {
       type: String,

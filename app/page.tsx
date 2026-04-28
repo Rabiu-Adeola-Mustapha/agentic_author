@@ -5,43 +5,19 @@ import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import Navbar from '@/components/shared/Navbar';
+import { Navbar } from '@/components/shared/Navbar';
 import { BookOpen, Clapperboard, FileText, Newspaper, GraduationCap, Zap, Target, Rocket } from 'lucide-react';
 
-const categories = [
-  {
-    icon: '📚',
-    label: 'Books & Stories',
-    description: 'Fiction and non-fiction with full chapter structure',
-  },
-  {
-    icon: '🎬',
-    label: 'Screenplays & Scripts',
-    description: 'Feature films, shorts, and TV pilots',
-  },
-  {
-    icon: '🎓',
-    label: 'Academic Theses',
-    description: 'Undergraduate, Masters, or PhD with citations',
-  },
-  {
-    icon: '📰',
-    label: 'Journal Articles',
-    description: 'Peer-reviewed academic content',
-  },
-  {
-    icon: '🏫',
-    label: 'Educational Content',
-    description: 'Lesson plans, courses, and study guides',
-  },
-];
+import { CATEGORY_CONFIG } from '@/lib/config/category-config';
+import { ContentCategory } from '@/types';
 
 const steps = [
-  { number: 1, title: 'Write Prompt', description: 'Describe what you want to create' },
-  { number: 2, title: 'Plan Structure', description: 'AI creates detailed outline' },
-  { number: 3, title: 'Research', description: 'Gather sources and insights' },
-  { number: 4, title: 'Generate Content', description: 'Full-length output creation' },
-  { number: 5, title: 'Evaluate Quality', description: 'Score and improve suggestions' },
+  { number: 1, title: 'Structured Questions', description: 'Answer a guided, adaptive questionnaire about your project goals' },
+  { number: 2, title: 'Prompt Generation', description: 'AI builds a comprehensive master prompt tailored to your needs' },
+  { number: 3, title: 'Plan Structure', description: 'AI creates a detailed outline and content strategy' },
+  { number: 4, title: 'Web Research', description: 'AI gathers real-world sources and key insights' },
+  { number: 5, title: 'Content Writing', description: 'AI writes your document section by section' },
+  { number: 6, title: 'Evaluate Quality', description: 'AI scores the output and suggests improvements' },
 ];
 
 export default function Home() {
@@ -96,8 +72,8 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <h2 className="text-4xl font-sora font-bold text-center mb-12">What can you create?</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories.map((cat, i) => (
-            <Card key={i} className="hover:border-indigo-600 transition-colors">
+          {(Object.entries(CATEGORY_CONFIG) as [ContentCategory, typeof CATEGORY_CONFIG[ContentCategory]][]).map(([key, cat]) => (
+            <Card key={key} className="hover:border-indigo-600 transition-colors">
               <CardHeader>
                 <div className="text-4xl mb-4">{cat.icon}</div>
                 <CardTitle className="text-xl">{cat.label}</CardTitle>

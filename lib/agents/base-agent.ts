@@ -8,7 +8,7 @@ import { validateAgentOutput, AgentValidationError } from '@/lib/guardrails/outp
 
 const openrouter = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
   defaultHeaders: {
     'HTTP-Referer': process.env.NEXTAUTH_URL || 'http://localhost:3000',
     'X-Title': 'Agentic Author',
@@ -44,24 +44,37 @@ export abstract class BaseAgent<TInput extends AgentInput, TOutput> {
     systemPrompt: string,
     userPrompt: string
   ): Promise<{ text: string; usage: { totalTokens: number } }> {
-    const response = await openrouter.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 4096,
-    });
+    if (!systemPrompt || systemPrompt.trim().length === 0) {
+      throw new Error('System prompt is empty');
+    }
+    if (!userPrompt || userPrompt.trim().length === 0) {
+      throw new Error('User prompt is empty');
+    }
 
-    const text = response.choices[0]?.message?.content || '';
+    console.log(`[${this.name}] Calling LLM with model:`, this.model);
+    try {
+      const response = await openrouter.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 4096,
+      });
 
-    return {
-      text,
-      usage: {
-        totalTokens: response.usage?.total_tokens || 0,
-      },
-    };
+      const text = response.choices[0]?.message?.content || '';
+
+      return {
+        text,
+        usage: {
+          totalTokens: response.usage?.total_tokens || 0,
+        },
+      };
+    } catch (error) {
+      console.error(`[${this.name}] LLM call failed:`, error);
+      throw error;
+    }
   }
 
   protected parseJsonResponse<T>(rawText: string, schema: z.ZodSchema<T>): T {

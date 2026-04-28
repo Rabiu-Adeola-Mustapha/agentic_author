@@ -1,71 +1,83 @@
-'use client';
-
 import { create } from 'zustand';
 import { ProjectStatus, PipelineStage } from '@/types';
 
 interface PipelineState {
-  status: ProjectStatus;
-  currentStage: PipelineStage;
   projectId: string | null;
-  pollingInterval: ReturnType<typeof setInterval> | null;
-
+  status: ProjectStatus | 'idle';
+  currentStage: PipelineStage | 'idle' | 'done';
+  errorMessage: string | null;
+  pollingIntervalId: NodeJS.Timeout | null;
+  
   startPolling: (projectId: string) => void;
   stopPolling: () => void;
-  setStage: (stage: PipelineStage) => void;
-  setStatus: (status: ProjectStatus) => void;
+  resetPipeline: () => void;
 }
 
-export const usePipelineStore = create<PipelineState>((set, get) => ({
-  status: 'draft',
-  currentStage: 'idle',
+const initialState = {
   projectId: null,
-  pollingInterval: null,
+  status: 'idle' as const,
+  currentStage: 'idle' as const,
+  errorMessage: null,
+  pollingIntervalId: null,
+};
+
+export const usePipelineStore = create<PipelineState>((set, get) => ({
+  ...initialState,
 
   startPolling: (projectId: string) => {
-    const existingInterval = get().pollingInterval;
-    if (existingInterval) {
-      clearInterval(existingInterval);
+    // Clear any existing interval first
+    const currentInterval = get().pollingIntervalId;
+    if (currentInterval) {
+      clearInterval(currentInterval);
     }
 
-    set({ projectId });
+    set({ projectId, errorMessage: null });
 
-    const interval = setInterval(async () => {
+    const fetchStatus = async () => {
       try {
-        const response = await fetch(`/api/projects/${projectId}/status`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch status');
-        }
-
-        const data = await response.json();
+        const res = await fetch(`/api/projects/${projectId}/status`);
+        if (!res.ok) throw new Error('Failed to fetch status');
+        
+        const data = await res.json();
+        
         set({
           status: data.status,
           currentStage: data.currentStage,
+          errorMessage: null,
         });
 
         if (data.status === 'completed' || data.status === 'failed') {
           get().stopPolling();
         }
-      } catch (error) {
-        console.error('Polling error:', error);
+      } catch (err) {
+        set({ errorMessage: err instanceof Error ? err.message : 'Unknown error' });
       }
-    }, 3000);
+    };
 
-    set({ pollingInterval: interval });
+    // Fetch immediately
+    fetchStatus();
+
+    // Then set interval for every 3s
+    const intervalId = setInterval(fetchStatus, 3000);
+    set({ pollingIntervalId: intervalId });
   },
 
   stopPolling: () => {
-    const interval = get().pollingInterval;
-    if (interval) {
-      clearInterval(interval);
-      set({ pollingInterval: null });
+    const { pollingIntervalId } = get();
+    if (pollingIntervalId) {
+      clearInterval(pollingIntervalId);
     }
+    set({ pollingIntervalId: null });
   },
 
-  setStage: (stage: PipelineStage) => {
-    set({ currentStage: stage });
-  },
-
-  setStatus: (status: ProjectStatus) => {
-    set({ status });
+  resetPipeline: () => {
+    get().stopPolling();
+    set({
+      projectId: null,
+      status: 'idle',
+      currentStage: 'idle',
+      pollingIntervalId: null,
+      errorMessage: null,
+    });
   },
 }));

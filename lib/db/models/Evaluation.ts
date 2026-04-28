@@ -8,6 +8,7 @@ export interface IEvaluation extends Document {
   qualityScore: number;
   issues: string[];
   suggestions: string[];
+  passedThreshold: boolean;
   createdAt: Date;
 }
 
@@ -43,6 +44,10 @@ const evaluationSchema = new Schema<IEvaluation>(
     },
     issues: [String],
     suggestions: [String],
+    passedThreshold: {
+      type: Boolean,
+      default: false,
+    },
     createdAt: {
       type: Date,
       default: Date.now,

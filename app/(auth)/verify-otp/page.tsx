@@ -1,4 +1,4 @@
-import Navbar from '@/components/shared/Navbar';
+import { Navbar } from '@/components/shared/Navbar';
 import OtpForm from '@/components/auth/OtpForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 

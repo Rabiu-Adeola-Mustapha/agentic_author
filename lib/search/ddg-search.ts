@@ -1,9 +1,4 @@
-import ddg from 'duckduckgo-search';
-
-// Patch buggy logger in older versions of duckduckgo-search
-if (ddg && ddg.logger && typeof ddg.logger.warning !== 'function') {
-  ddg.logger.warning = console.warn;
-}
+import { search, SafeSearchType } from 'duck-duck-scrape';
 
 export interface SearchResult {
   title: string;
@@ -12,59 +7,40 @@ export interface SearchResult {
   score?: number;
 }
 
-export async function searchWeb(query: string, maxResults: number = 5): Promise<SearchResult[]> {
-  const results: SearchResult[] = [];
-  try {
-    for await (const result of ddg.text(query)) {
-      results.push({
-        title: result.title,
-        url: result.href,
-        snippet: result.body,
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export async function searchWeb(query: string, maxResults: number = 5, retries: number = 2): Promise<SearchResult[]> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const response = await search(query, {
+        safeSearch: SafeSearchType.MODERATE,
       });
 
-      if (results.length >= maxResults) {
-        break;
+      const results = response.results.slice(0, maxResults).map((r: any, index: number) => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.description,
+        score: 100 - index * 5,
+      }));
+
+      return results;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const isRateLimit = errorMsg.includes('anomaly') || errorMsg.includes('too quickly');
+      
+      if (i < retries && isRateLimit) {
+        const waitTime = (i + 1) * 2000; // 2s, 4s backoff
+        console.warn(`DDG Rate limit hit for "${query}". Retrying in ${waitTime}ms... (Attempt ${i + 1}/${retries})`);
+        await sleep(waitTime);
+        continue;
       }
-    }
-  } catch (error) {
-    console.warn(`DuckDuckGo search package failed for query "${query}":`, error);
-    
-    // Fallback if duckduckgo-search fails
-    try {
-      const fallbackUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-      const res = await fetch(fallbackUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        },
-      });
-      if (res.ok) {
-        const text = await res.text();
-        const regex = /<a class="result__url" href="([^"]+)".*?>(.*?)<\/a>.*?<a class="result__snippet[^>]+>(.*?)<\/a>/gs;
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-          let href = match[1];
-          if (href.startsWith('/l/?uddg=')) {
-            href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]);
-          }
-          const title = match[2].replace(/<\/?[^>]+(>|$)/g, '').trim();
-          const snippet = match[3].replace(/<\/?[^>]+(>|$)/g, '').trim();
-          
-          if (title && href && snippet) {
-            results.push({ title, url: href, snippet });
-          }
-          if (results.length >= maxResults) break;
-        }
-      }
-    } catch (fallbackError) {
-      console.error('DDG fallback also failed:', fallbackError);
-      throw new Error(`Web search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      console.warn(
+        `Web search failed for query "${query}":`,
+        errorMsg
+      );
+      return [];
     }
   }
-  
-  if (results.length === 0) {
-    // Generate dummy score if needed, but not required
-    // return an empty array
-  }
-  
-  return results.map((r, i) => ({ ...r, score: 100 - i * 5 }));
+  return [];
 }

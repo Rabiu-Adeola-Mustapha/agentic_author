@@ -4,9 +4,10 @@ export interface IPlan extends Document {
   projectId: mongoose.Types.ObjectId;
   promptId: mongoose.Types.ObjectId;
   contentType: string;
-  structure: string[];
+  structure: { key: string; title: string; description: string; estimatedWords: number }[];
   formattingRules: Record<string, string>;
   contentStrategy: string;
+  searchQueries: string[];
   createdAt: Date;
 }
 
@@ -26,7 +27,10 @@ const planSchema = new Schema<IPlan>(
       type: String,
       required: true,
     },
-    structure: [String],
+    structure: {
+      type: Schema.Types.Mixed,
+      required: true,
+    },
     formattingRules: {
       type: Schema.Types.Mixed,
       default: {},
@@ -34,6 +38,10 @@ const planSchema = new Schema<IPlan>(
     contentStrategy: {
       type: String,
       required: true,
+    },
+    searchQueries: {
+      type: [String],
+      default: [],
     },
     createdAt: {
       type: Date,

@@ -17,7 +17,14 @@ if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
   const path = require('path');
 
   const isDev = process.env.NODE_ENV !== 'production';
-  const logsDir = process.cwd ? path.join(process.cwd(), 'logs') : '/tmp/logs';
+  const getLogsDir = () => {
+    try {
+      return path.join(process.cwd(), 'logs');
+    } catch {
+      return '/tmp/logs';
+    }
+  };
+  const logsDir = getLogsDir();
 
   const levels = {
     error: 0,

@@ -1,5 +1,3 @@
-import logger from '@/lib/logger';
-
 export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -24,10 +22,4 @@ export async function resendOTP(email: string): Promise<void> {
 
   // Send email
   await sendOtpEmail(email, otp);
-
-  logger.info('OTP resent successfully', {
-    email,
-    reason: 'verification_redirect',
-    timestamp: new Date().toISOString(),
-  });
 }

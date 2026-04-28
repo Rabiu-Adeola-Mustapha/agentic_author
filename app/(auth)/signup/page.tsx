@@ -1,4 +1,4 @@
-import Navbar from '@/components/shared/Navbar';
+import { Navbar } from '@/components/shared/Navbar';
 import SignupForm from '@/components/auth/SignupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 

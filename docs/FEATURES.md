@@ -155,8 +155,11 @@ interface ContentOutline {
 - **Input**: Content outline, topic
 - **Output**: Research findings per section
 - **Data Sources**:
-  - Tavily API (primary)
-  - DuckDuckGo search (fallback)
+  - DuckDuckGo Search (Primary)
+- **Features**:
+  - Sequential execution to avoid rate limits.
+  - Jittered delays for human-like behavior.
+  - Automatic retries with exponential backoff.
 - **File**: `lib/agents/researcher.ts`
 
 ```typescript
@@ -195,14 +198,14 @@ interface GeneratedPrompt {
 ```
 
 #### 5. Evaluator Agent
-- **Purpose**: Assesses content quality and suggests improvements
+- **Purpose**: Assesses content quality and suggests improvements.
 - **Input**: Generated content
-- **Output**: Quality score and improvement suggestions
+- **Output**: Quality scores (Overall, Alignment, Quality), issues, and suggestions.
 - **Criteria**:
-  - Readability
-  - Accuracy
-  - Completeness
-  - SEO optimization
+  - Identity and Role adherence.
+  - Adherence to formatting rules.
+  - Integration of key insights.
+- **Status**: Always marks project as `completed` to allow user review of feedback.
 - **File**: `lib/agents/evaluator.ts`
 
 ```typescript

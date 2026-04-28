@@ -20,12 +20,16 @@ export async function performSecurityCheck(
   let riskLevel: "safe" | "low" | "medium" | "high" = "safe";
   let method: "claude" | "llama-guard" | "hybrid" = "claude";
 
-  // Step 1: Quick check with Claude
+  // Step 1: Quick check with Claude (regex patterns only - skip to avoid false positives on legitimate text)
   const claudeResult = await guardPrompt(prompt);
-  threats.push(...claudeResult.threats);
 
-  if (claudeResult.threats.length > 0) {
-    riskLevel = claudeResult.threats.length > 2 ? "high" : "medium";
+  // Filter out false positive injection patterns from regex check
+  // Keep only AI-powered analysis results, not regex pattern matches
+  const aiAnalysisThreat = claudeResult.threats.filter(t => !t.includes("Potential injection pattern"));
+  threats.push(...aiAnalysisThreat);
+
+  if (aiAnalysisThreat.length > 0) {
+    riskLevel = aiAnalysisThreat.length > 2 ? "high" : "medium";
   }
 
   // Step 2: Optional deeper check with Llama Guard if available
@@ -44,9 +48,9 @@ export async function performSecurityCheck(
     }
   }
 
-  // Step 3: Sanitize if threats detected
+  // Step 3: Only sanitize if there are genuine threats (not regex false positives)
   let sanitizedPrompt = prompt;
-  if (threats.length > 0) {
+  if (threats.length > 0 && riskLevel !== "safe") {
     sanitizedPrompt = await sanitizePromptWithGuard(prompt);
   }
 

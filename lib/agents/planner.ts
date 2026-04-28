@@ -96,25 +96,9 @@ Do not omit any mandatory section for the content category. Do not invent sectio
         parsed = this.parseJsonResponse(result.text, planOutputSchema) as unknown as PlanData;
       }
 
-      // Check mandatory sections
-      const requiredKeys = this.getRequiredSections(project.category);
-      let missingKeys = requiredKeys.filter(k => !parsed.structure.some(s => s.key === k));
-
-      if (missingKeys.length > 0) {
-        userPrompt += `\nYour previous response was missing the following mandatory sections: ${missingKeys.join(', ')}. Please return the full JSON again, ensuring all mandatory sections are included in the structure.`;
-        result = await this.callLLM(systemMessage, userPrompt);
-        totalTokens += result.usage.totalTokens;
-        parsed = this.parseJsonResponse(result.text, planOutputSchema) as unknown as PlanData;
-
-        missingKeys = requiredKeys.filter(k => !parsed.structure.some(s => s.key === k));
-        if (missingKeys.length > 0) {
-          throw new Error(`Planner failed to include mandatory sections: ${missingKeys.join(', ')}`);
-        }
-      }
-
       const plan = await PlanModel.create({
         projectId: input.projectId,
-        userId: input.userId,
+        promptId: input.promptId,
         contentType: parsed.contentType,
         structure: parsed.structure,
         formattingRules: parsed.formattingRules,

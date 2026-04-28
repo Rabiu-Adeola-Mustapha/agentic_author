@@ -48,6 +48,10 @@ Do not include any commentary, apology, or explanation outside the JSON object. 
       if (!project) throw new Error('Project not found');
 
       const sanitized = sanitizePrompt(input.rawInput);
+      if (!sanitized || sanitized.trim().length === 0) {
+        throw new Error('Input prompt is empty after sanitization');
+      }
+
       const systemMessage = this.buildSystemMessage(project.category);
 
       let userPrompt = sanitized;

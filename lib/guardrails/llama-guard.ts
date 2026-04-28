@@ -1,4 +1,3 @@
-import axios from "axios";
 import { MODELS } from "@/lib/config/models";
 
 export interface LlamaGuardResult {
@@ -37,25 +36,22 @@ class LlamaGuardClient {
    */
   async isAvailable(): Promise<boolean> {
     try {
-      // Make a test request with minimal tokens to check availability
-      const response = await axios.post(
-        this.endpoint,
-        {
+      const response = await fetch(this.endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3000",
+          "X-Title": "Agentic Author",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           model: this.modelName,
           messages: [{ role: "user", content: "test" }],
           max_tokens: 1,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3000",
-            "X-Title": "Agentic Author",
-          },
-          timeout: 5000,
-        }
-      );
+        }),
+      });
 
-      return response.status === 200;
+      return response.ok;
     } catch (error) {
       console.warn("Llama Guard not available:", error);
       return false;
@@ -84,9 +80,15 @@ RISK_LEVEL: [safe/low/medium/high]
 REASONING: [brief explanation]`;
 
     try {
-      const response = await axios.post(
-        this.endpoint,
-        {
+      const response = await fetch(this.endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3000",
+          "X-Title": "Agentic Author",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           model: this.modelName,
           messages: [
             {
@@ -100,17 +102,11 @@ REASONING: [brief explanation]`;
           ],
           temperature: 0.1,
           max_tokens: 200,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3000",
-            "X-Title": "Agentic Author",
-          },
-        }
-      );
+        }),
+      });
 
-      const content = response.data.choices?.[0]?.message?.content || "";
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "";
       return this.parseResponse(content);
     } catch (error) {
       console.error("OpenRouter analysis failed:", error);

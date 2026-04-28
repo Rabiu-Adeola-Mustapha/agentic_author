@@ -23,8 +23,13 @@ export function validateAgentOutput<T>(
 }
 
 export const promptOutputSchema = z.object({
-  rawInput: z.string(),
-  structuredIntent: z.record(z.string(), z.string()),
+  structuredIntent: z.object({
+    topic: z.string(),
+    audience: z.string(),
+    tone: z.string(),
+    length: z.string(),
+    keyRequirements: z.array(z.string()),
+  }),
   finalPrompt: z.string(),
 });
 

@@ -13,24 +13,24 @@
  */
 
 export const MODELS = {
-  /** Purpose-built safety classifier — fastest, lowest cost */
-  GUARDRAIL_FAST: process.env.MODEL_GUARDRAIL_FAST || 'meta-llama/llama-guard-3-8b',
+  /** Purpose-built safety classifier */
+  GUARDRAIL_FAST: process.env.MODEL_GUARDRAIL_FAST || 'anthropic/claude-haiku-4-5-20251001',
 
-  /** Deep semantic safety + sanitisation — Claude's comprehension */
-  GUARDRAIL_DEEP: process.env.MODEL_GUARDRAIL_DEEP || 'anthropic/claude-3.5-sonnet',
+  /** Deep semantic safety + sanitisation */
+  GUARDRAIL_DEEP: process.env.MODEL_GUARDRAIL_DEEP || 'anthropic/claude-sonnet-4-6',
 
-  /** PromptWriter — creative clarification and intent expansion */
-  PROMPT_WRITER: process.env.MODEL_PROMPT_WRITER || 'anthropic/claude-3-opus',
+  /** PromptWriter — high reasoning capability */
+  PROMPT_WRITER: process.env.MODEL_PROMPT_WRITER || 'anthropic/claude-opus-4-7',
 
-  /** Planner — structured reasoning, section architecture */
+  /** Planner — structural logic */
   PLANNER: process.env.MODEL_PLANNER || 'openai/gpt-4o',
 
-  /** Researcher — broad world knowledge + real-world grounding */
-  RESEARCHER: process.env.MODEL_RESEARCHER || 'x-ai/grok-2',
+  /** Researcher — massive context window */
+  RESEARCHER: process.env.MODEL_RESEARCHER || 'openai/gpt-4o',
 
-  /** Writer — long-form prose, narrative quality */
-  WRITER: process.env.MODEL_WRITER || 'anthropic/claude-3.5-sonnet',
+  /** Writer — creative prose */
+  WRITER: process.env.MODEL_WRITER || 'anthropic/claude-sonnet-4-6',
 
-  /** Evaluator — strict scoring, QA, objective analysis */
+  /** Evaluator — objective analysis */
   EVALUATOR: process.env.MODEL_EVALUATOR || 'openai/gpt-4o',
 } as const;

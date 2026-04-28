@@ -10,8 +10,6 @@ import mongoose from 'mongoose';
 
 const runPipelineSchema = z.object({
   projectId: z.string(),
-  rawPrompt: z.string().min(10),
-  category: z.enum(['book', 'screenplay', 'thesis', 'journal', 'educational']),
 });
 
 export async function POST(request: NextRequest) {
@@ -22,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { projectId, rawPrompt, category } = runPipelineSchema.parse(body);
+    const { projectId } = runPipelineSchema.parse(body);
 
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
       return NextResponse.json(
@@ -42,6 +40,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
+      );
+    }
+
+    if (!project.rawPrompt || project.rawPrompt.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Project has no prompt. Please create the project with a valid prompt.' },
+        { status: 400 }
       );
     }
 
@@ -78,10 +83,11 @@ export async function POST(request: NextRequest) {
       { status: 'running', currentStage: 'prompt' }
     );
 
+    console.log('[Pipeline] Starting background execution for project:', projectId);
     new PipelineOrchestrator()
-      .run(projectId, session.user.id, rawPrompt, category as ContentCategory)
+      .run(projectId, session.user.id, project.rawPrompt || '', project.category as ContentCategory)
       .catch((error) => {
-        console.error('[Pipeline Error]', error);
+        console.error('[Pipeline] Background error:', error);
       });
 
     return NextResponse.json(

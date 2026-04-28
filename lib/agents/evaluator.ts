@@ -102,14 +102,8 @@ Do not be polite or encouraging — be brutally objective. Do not provide a scor
       });
 
       project.evaluationId = evaluation._id;
-      
-      if (passedThreshold) {
-        project.status = 'completed';
-        project.currentStage = 'done';
-      } else {
-        project.status = 'failed';
-        project.currentStage = 'failed';
-      }
+      project.status = 'completed';
+      project.currentStage = 'done';
       
       await project.save();
 

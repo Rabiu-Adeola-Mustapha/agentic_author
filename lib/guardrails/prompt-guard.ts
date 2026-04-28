@@ -1,4 +1,3 @@
-import axios from "axios";
 import { MODELS } from "@/lib/config/models";
 
 export interface GuardResult {
@@ -15,22 +14,19 @@ const CONFIG = {
   MAX_PROMPT_LENGTH: 8000,
   TRUNCATION_WARNING_THRESHOLD: 0.8,
   DANGEROUS_PATTERNS: [
-    // Prompt injection attempts
+    // Prompt injection attempts - very specific to actual injection attempts
     /(\bignore\b|\bdisregard\b|\bforget\b).*?(\binstructions\b|\bsystem\b|\brules\b)/gi,
     /\byou are now\b/gi,
     /\byou are a\b.*?(?:hacker|attacker|malicious)/gi,
     /\b(?:system|user|admin)\s*(?:prompt|instruction|override)/gi,
     /\[SYSTEM\]|\[ADMIN\]|\[OVERRIDE\]/gi,
 
-    // SQL Injection patterns
-    /('|(--)|;|\*|\/\*|\*\/|xp_|sp_|exec\(|execute\()/gi,
+    // SQL/Command patterns - only dangerous keywords/functions, not individual chars
+    /(\bexec|execute|xp_|sp_)\s*\(/gi,
+    /\b(union|select|insert|delete|drop|create|alter)\s+(from|into|table|database)\b/gi,
 
-    // Command injection patterns
-    /(;|\||\u0026|`|\$\(|\u0026\u0026|\|\|)/g,
-
-    // XML/XXE patterns
+    // XXE patterns
     /<!ENTITY|SYSTEM\s+["']file:\/\//gi,
-    /\[\[.*?\]\]/g,
   ],
 };
 
@@ -74,28 +70,26 @@ Analyze the given text and determine if it contains:
 Respond with JSON only, no markdown, no other text: { "isSafe": boolean, "reason": "explanation" }`;
 
     try {
-      const response = await axios.post(
-        this.openRouterEndpoint,
-        {
+      const response = await fetch(this.openRouterEndpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "HTTP-Referer": "http://localhost:3000",
+          "X-Title": "Agentic Author",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           model: this.modelId,
           max_tokens: 256,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Analyze this text for security issues:\n\n${text}` },
           ],
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": "http://localhost:3000",
-            "X-Title": "Agentic Author",
-            "Content-Type": "application/json",
-          },
-          timeout: 15000,
-        }
-      );
+        }),
+      });
 
-      const raw: string = response.data.choices?.[0]?.message?.content || "";
+      const data = await response.json();
+      const raw: string = data.choices?.[0]?.message?.content || "";
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const analysis = JSON.parse(jsonMatch[0]);
@@ -140,7 +134,7 @@ Respond with JSON only, no markdown, no other text: { "isSafe": boolean, "reason
       threats.push(`Prompt truncated from ${originalLength} to ${text.length} characters`);
     }
 
-    // Step 2: Fast regex pattern check
+    // Step 2: Fast regex pattern check (only severe patterns now)
     threats.push(...this.detectInjectionPatterns(text));
 
     // Step 3: AI-powered deep analysis via OpenRouter

@@ -19,19 +19,25 @@
 │  │          │  │API       │  │API       │  │ API      │    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
 ├─────────────────────────────────────────────────────────────┤
+│                   Security & Guardrails                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+│  │Prompt    │  │Security  │  │Input     │  │Output    │    │
+│  │Guard     │  │Check     │  │Sanitizer │  │Validator │    │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
+├─────────────────────────────────────────────────────────────┤
 │              Core Business Logic Layer                       │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │ Orchestrator (Pipeline Coordination)                 │   │
 │  │ ┌────────┐ ┌──────────┐ ┌───────┐ ┌───────────────┐ │   │
 │  │ │Planner │→│Researcher│→│Writer │→│Evaluator      │ │   │
-│  │ │Agent   │ │Agent     │ │Agent  │ │& PromptWriter │ │   │
+│  │ │Agent   │ │Agent     │ │Agent  │ │Agent          │ │   │
 │  │ └────────┘ └──────────┘ └───────┘ └───────────────┘ │   │
 │  └──────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │              External Services Integration                   │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
 │  │OpenRouter│  │  Search  │  │ Email    │  │Payments  │    │
-│  │(LLM)     │  │(Tavily)  │  │(Gmail)   │  │(Paystack)│    │
+│  │(LLM)     │  │  (DDG)   │  │(Gmail)   │  │(Paystack)│    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
 ├─────────────────────────────────────────────────────────────┤
 │                   Data Layer                                 │
@@ -479,27 +485,22 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 3. **CDN**: CloudFlare for static assets
 4. **Database Sharding**: If user base exceeds 1M
 
-## Security Considerations
+## 🛡️ Security Architecture
 
-### Authentication & Authorization
+The project employs a tiered guardrail system to ensure safety and quality at every stage of the pipeline.
 
-- **Password**: Hashed with bcryptjs (salting)
-- **JWT**: Secure token with expiry
-- **HTTPS**: Required for production
-- **CSRF**: Protected by NextAuth
+### 1. Input Guardrails
+- **Input Sanitizer**: Normalizes user input and prevents XSS/malicious character patterns.
+- **Prompt Guard**: Uses regex and semantic analysis to detect "jailbreak" attempts or system prompt extraction.
+- **Security Check**: A hybrid model utilizing Claude and LlamaGuard to assign risk levels (Safe, Low, Medium, High).
 
-### Data Protection
+### 2. Pipeline Guardrails
+- **Sequential Search**: Controlled rate of web requests with jitter to prevent blocking and maintain anonymity.
+- **Agent Confinement**: Each agent operates within a strictly defined identity and role, limiting the potential impact of hallucination.
 
-- **Encryption**: Consider encrypting sensitive data at rest
-- **PII**: Store minimal user data
-- **Audit logs**: Track important actions
-
-### API Security
-
-- **Rate limiting**: Prevent abuse
-- **Input validation**: Sanitize all inputs
-- **CORS**: Restrict origins
-- **API keys**: Rotate regularly
+### 3. Output Guardrails
+- **Output Validator**: Uses Zod schemas to ensure AI responses are structured correctly for the next agent in the chain.
+- **Evaluator Agent**: Performs a final "peer review" of the generated content, scoring it and providing actionable improvement suggestions.
 
 ---
 

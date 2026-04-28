@@ -62,89 +62,47 @@ Open http://localhost:3000
 ```
 agentic_author/
 ├── app/                          # Next.js app directory
-│   ├── (auth)/                  # Auth pages (login, signup, verify)
-│   ├── (dashboard)/             # Protected dashboard pages
-│   │   ├── dashboard/           # Main dashboard
-│   │   ├── projects/            # Project management
-│   │   ├── billing/             # Subscription management
-│   │   └── layout.tsx           # Dashboard layout with sidebar
-│   ├── api/                     # API routes
-│   │   ├── auth/                # NextAuth configuration
-│   │   ├── projects/            # Project CRUD operations
-│   │   ├── pipeline/            # Content generation pipeline
-│   │   ├── export/              # DOCX/PDF export
-│   │   ├── otp/                 # OTP verification
-│   │   └── payments/            # Paystack webhook
-│   ├── layout.tsx               # Root layout
-│   └── page.tsx                 # Landing page
-│
+├── components/                  # React components (UI, editor, dashboard)
+├── docs/                        # Project documentation
 ├── lib/                         # Core business logic
-│   ├── auth/                    # NextAuth configuration
-│   ├── db/                      # Database
-│   │   ├── mongoose.ts          # MongoDB connection
-│   │   └── models/              # Data models (User, Project, etc.)
-│   ├── agents/                  # AI agents
-│   │   ├── base-agent.ts        # Base agent class
-│   │   ├── planner.ts           # Content plan generation
-│   │   ├── researcher.ts        # Research agent
-│   │   ├── writer.ts            # Content writing
-│   │   ├── evaluator.ts         # Quality evaluation
-│   │   └── prompt-writer.ts     # Dynamic prompt generation
-│   ├── orchestrator/            # Pipeline coordination
-│   │   └── pipeline.ts          # Main content generation pipeline
+│   ├── agents/                  # AI agents (Planner, Researcher, etc.)
+│   ├── auth/                    # Authentication logic
+│   ├── config/                  # App configuration
+│   ├── db/                      # Database models and connection
 │   ├── email/                   # Email services
-│   ├── search/                  # Web search integration
-│   ├── payments/                # Payment processing
-│   ├── export/                  # Export generators
-│   │   ├── docx.ts              # DOCX generation
-│   │   └── pdf.ts               # PDF generation
-│   ├── guardrails/              # Input/output validation
-│   └── config/                  # Configuration files
-│
-├── components/                  # React components
-│   ├── auth/                    # Auth forms
-│   ├── shared/                  # Reusable components
-│   │   ├── Navbar.tsx
-│   │   └── Sidebar.tsx
-│   └── ...                      # Other UI components
-│
+│   ├── export/                  # DOCX/PDF generators
+│   ├── guardrails/              # Security and validation layers
+│   ├── orchestrator/            # Pipeline coordination
+│   ├── payments/                # Paystack integration
+│   └── search/                  # Web search utility
 ├── store/                       # Zustand state management
-│   └── pipeline.store.ts        # Pipeline UI state
-│
-├── types/                       # TypeScript type definitions
-│   └── index.ts                 # Shared types
-│
-├── .env.example                 # Environment variable template
-├── middleware.ts                # NextAuth middleware
 ├── next.config.js               # Next.js configuration
 ├── tailwind.config.ts           # Tailwind CSS config
 └── tsconfig.json                # TypeScript configuration
 ```
 
-## 🔧 Key Technologies
+## 🔧 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | Next.js 16, React 18, TypeScript, Tailwind CSS, Radix UI |
-| **Backend** | Next.js API Routes, Node.js |
-| **Database** | MongoDB with Mongoose ODM |
-| **Authentication** | NextAuth.js v5 beta |
-| **AI** | OpenRouter API (Claude, GPT-4, etc.) |
-| **Search** | Tavily & DuckDuckGo |
-| **Email** | Nodemailer (Gmail) |
-| **Payments** | Paystack |
-| **Export** | PDFKit, DOCX |
-| **State Management** | Zustand |
-| **Validation** | Zod |
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
+- **Styling**: Vanilla CSS with Tailwind utility integration
+- **Database**: [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/)
+- **Auth**: [NextAuth.js v5](https://next-auth.js.org/)
+- **State**: [Zustand](https://github.com/pmndrs/zustand)
+- **AI**: OpenRouter SDK (Claude 3.5 Sonnet, GPT-4o)
+- **Payments**: [Paystack](https://paystack.com/)
+- **Email**: Nodemailer (Gmail)
 
 ## 📚 Documentation
 
+Detailed documentation is available in the `docs/` folder:
+
 - **[FEATURES.md](./docs/FEATURES.md)** - Detailed feature documentation
-- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System design and architecture
-- **[DATABASE.md](./docs/DATABASE.md)** - Database schema and models
-- **[API.md](./docs/API.md)** - API endpoints reference
+- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System design and agent workflow
+- **[GUARDRAILS.md](./docs/GUARDRAILS.md)** - Security and input/output validation
+- **[DATABASE.md](./docs/DATABASE.md)** - Schema and model details
+- **[API.md](./docs/API.md)** - REST API reference
 - **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** - Production deployment guide
-- **[DEVELOPMENT.md](./docs/DEVELOPMENT.md)** - Development setup and guidelines
+- **[DEVELOPMENT.md](./docs/DEVELOPMENT.md)** - Local setup and contribution
 
 ## 🔐 Authentication Flow
 

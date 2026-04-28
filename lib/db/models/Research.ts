@@ -30,8 +30,7 @@ const researchSchema = new Schema<IResearch>(
     ],
     keyInsights: [String],
     citationMap: {
-      type: Map,
-      of: Number,
+      type: Schema.Types.Mixed,
       default: {},
     },
     createdAt: {

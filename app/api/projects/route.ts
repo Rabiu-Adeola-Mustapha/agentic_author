@@ -7,7 +7,7 @@ import { ContentCategory } from '@/types';
 
 const createProjectSchema = z.object({
   title: z.string().min(1),
-  category: z.enum(['book', 'screenplay', 'thesis', 'journal', 'educational']),
+  category: z.enum(['book', 'screenplay', 'thesis', 'journal', 'educational', 'article', 'social_media']),
   rawPrompt: z.string().min(10),
 });
 
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { title, category, rawPrompt } = createProjectSchema.parse(body);
+    console.log('[Projects POST] Creating project:', { title, category, rawPromptLength: rawPrompt.length });
 
     await connectDB();
 
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
       userId: session.user.id,
       title,
       category: category as ContentCategory,
+      rawPrompt,
       status: 'draft',
       currentStage: 'idle',
     });
