@@ -35,7 +35,7 @@ export default async function ProjectsPage() {
         
         {serializedProjects.length > 0 && (
           <Link
-            href="/projects/new"
+            href="/dashboard/projects/new"
             className="inline-flex items-center gap-2 rounded-md bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-600"
           >
             <Plus className="h-4 w-4" />

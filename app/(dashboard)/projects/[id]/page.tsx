@@ -28,7 +28,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   }).lean();
 
   if (!project) {
-    redirect('/projects');
+    redirect('/dashboard/projects');
   }
 
   // Fetch output and evaluation if completed

@@ -23,11 +23,13 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const amountKobo = 50000 * 100;
+    const origin = request.nextUrl.origin;
+    const callbackUrl = `${origin}/api/payments/callback`;
 
     const response = await initializeTransaction(email, amountKobo, {
       userId: session.user.id,
       plan,
-    });
+    }, callbackUrl);
 
     await PaymentModel.create({
       userId: session.user.id,

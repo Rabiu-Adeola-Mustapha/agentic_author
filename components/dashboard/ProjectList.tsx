@@ -31,7 +31,7 @@ export function ProjectList({ initialProjects }: ProjectListProps) {
         <h3 className="mb-2 text-xl font-medium text-zinc-300">No projects yet</h3>
         <p className="mb-6 text-zinc-500">Create your first project to get started with Agentic Author.</p>
         <Link
-          href="/projects/new"
+          href="/dashboard/projects/new"
           className="rounded-md bg-indigo-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-600"
         >
           Create New Project

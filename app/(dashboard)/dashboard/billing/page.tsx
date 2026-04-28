@@ -1,16 +1,49 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function BillingPage() {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [upgrading, setUpgrading] = useState(false);
+
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+
+    if (success === 'true') {
+      toast({
+        title: 'Payment Successful!',
+        description: 'Your subscription has been upgraded to Pro. Refreshing your account...',
+      });
+      updateSession();
+      // Clean up URL parameters
+      window.history.replaceState({}, '', '/dashboard/billing');
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        payment_failed: 'Payment was not completed. Please try again.',
+        missing_reference: 'Payment reference is missing.',
+        payment_not_found: 'Payment record not found.',
+        user_not_found: 'User account not found.',
+        verification_failed: 'Payment verification failed. Please contact support.',
+      };
+      toast({
+        title: 'Payment Error',
+        description: errorMessages[error] || 'An error occurred during payment verification.',
+        variant: 'destructive',
+      });
+      // Clean up URL parameters
+      window.history.replaceState({}, '', '/dashboard/billing');
+    }
+  }, [searchParams, toast, updateSession]);
 
   const userPlan = (session?.user as any)?.plan || 'free';
 
@@ -49,6 +82,16 @@ export default function BillingPage() {
         <h1 className="text-4xl font-sora font-bold mb-2">Billing & Plans</h1>
         <p className="text-zinc-400">Manage your subscription</p>
       </div>
+
+      {userPlan === 'pro' && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-emerald-100">Pro Plan Active</p>
+            <p className="text-sm text-emerald-200">Thank you for upgrading! You now have access to all Pro features.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Free Plan */}

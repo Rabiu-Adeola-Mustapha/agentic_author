@@ -9,11 +9,11 @@ export function Navbar() {
 
   // Simple logic to derive page title from pathname
   let pageTitle = 'Dashboard';
-  if (pathname.includes('/projects/new')) {
+  if (pathname.includes('/projects/new') || pathname.includes('/dashboard/projects/new')) {
     pageTitle = 'New Project';
-  } else if (pathname.includes('/projects')) {
+  } else if (pathname.includes('/projects') || pathname.includes('/dashboard/projects')) {
     pageTitle = 'Projects';
-  } else if (pathname.includes('/billing')) {
+  } else if (pathname.includes('/billing') || pathname.includes('/dashboard/billing')) {
     pageTitle = 'Billing';
   }
 
@@ -23,7 +23,7 @@ export function Navbar() {
         {pageTitle}
       </h1>
       <Link
-        href="/projects/new"
+        href="/dashboard/projects/new"
         className="flex items-center gap-2 rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
       >
         <Plus className="h-4 w-4" />

@@ -42,8 +42,8 @@ export function UsageStats({ dailyCount, plan }: UsageStatsProps) {
             {isFree ? `${dailyCount} / ${FREE_LIMIT}` : `${dailyCount} / ∞`}
           </span>
           {isFree && (
-            <Link 
-              href="/billing" 
+            <Link
+              href="/dashboard/billing"
               className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
             >
               Upgrade to Pro

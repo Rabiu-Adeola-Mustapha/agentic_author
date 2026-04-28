@@ -135,7 +135,7 @@ export function ExportMenu({ projectId, userPlan }: ExportMenuProps) {
             <Button variant="outline" onClick={() => setShowUpgradeModal(false)} className="bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white">
               Cancel
             </Button>
-            <Link href="/billing">
+            <Link href="/dashboard/billing">
               <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
                 Upgrade to Pro
               </Button>

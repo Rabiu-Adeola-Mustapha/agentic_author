@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   FolderOpen,
   CreditCard,
+  Settings,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,8 +19,9 @@ export function Sidebar() {
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Projects', href: '/projects', icon: FolderOpen },
-    { name: 'Billing', href: '/billing', icon: CreditCard },
+    { name: 'Projects', href: '/dashboard/projects', icon: FolderOpen },
+    { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
+    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
   return (

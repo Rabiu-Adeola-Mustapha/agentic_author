@@ -26,19 +26,26 @@ export interface VerifyTransactionResponse {
 export async function initializeTransaction(
   email: string,
   amountKobo: number,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
+  callbackUrl?: string
 ): Promise<InitializeTransactionResponse> {
+  const body: Record<string, unknown> = {
+    email,
+    amount: amountKobo,
+    metadata,
+  };
+
+  if (callbackUrl) {
+    body.callback_url = callbackUrl;
+  }
+
   const response = await fetch('https://api.paystack.co/transaction/initialize', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
     },
-    body: JSON.stringify({
-      email,
-      amount: amountKobo,
-      metadata,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

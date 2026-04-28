@@ -116,7 +116,7 @@ export default async function DashboardPage() {
               Recent Projects
             </h2>
             {total > 6 && (
-              <Link href="/projects" className="text-sm font-medium text-indigo-400 hover:text-indigo-300">
+              <Link href="/dashboard/projects" className="text-sm font-medium text-indigo-400 hover:text-indigo-300">
                 View all
               </Link>
             )}
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
               <h3 className="mb-1 text-lg font-medium text-zinc-300">No projects yet</h3>
               <p className="mb-4 text-sm text-zinc-500">Create your first project to get started.</p>
               <Link
-                href="/projects/new"
+                href="/dashboard/projects/new"
                 className="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-600"
               >
                 Create Project

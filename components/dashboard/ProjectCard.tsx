@@ -92,7 +92,7 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
 
   return (
     <Link
-      href={`/projects/${project._id}`}
+      href={`/dashboard/projects/${project._id}`}
       className="group relative flex h-[180px] flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900 p-5 transition-all duration-150 hover:scale-[1.01] hover:bg-zinc-800"
     >
       <div>
