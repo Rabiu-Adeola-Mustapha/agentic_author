@@ -395,9 +395,7 @@ ISC
 
 ---
 
-For issues or questions:
-1. Check the documentation in the `docs/` folder
-2. Enable logging: `NODE_ENV=development npm run dev`
-3. Use OpenAI SDK trace: Set `OPENAI_LOG=true`
-4. Review console output for detailed error messages
-5. Check browser DevTools for frontend issues
+## Deployement 
+  **https://agentic-author.vercel.app/
+
+For issues or questions, check the documentation in the `docs/` folder or review the code comments.
