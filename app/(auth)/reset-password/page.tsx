@@ -1,4 +1,5 @@
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
+import { Suspense } from 'react';
 
 export const metadata = {
   title: 'Reset Password - Agentic Author',
@@ -14,7 +15,9 @@ export default function ResetPasswordPage() {
           <p className="text-zinc-400">Enter your new password below</p>
         </div>
 
-        <ResetPasswordForm />
+        <Suspense fallback={<div className="h-40 flex items-center justify-center">Loading...</div>}>
+          <ResetPasswordForm />
+        </Suspense>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { Navbar } from '@/components/shared/Navbar';
 import OtpForm from '@/components/auth/OtpForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Suspense } from 'react';
 
 export default function VerifyOtpPage() {
   return (
@@ -14,7 +15,9 @@ export default function VerifyOtpPage() {
             <CardDescription>Enter the 6-digit code sent to your email</CardDescription>
           </CardHeader>
           <CardContent>
-            <OtpForm />
+            <Suspense fallback={<div className="h-40 flex items-center justify-center">Loading...</div>}>
+              <OtpForm />
+            </Suspense>
           </CardContent>
         </Card>
       </div>

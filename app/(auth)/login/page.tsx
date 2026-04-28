@@ -1,6 +1,7 @@
 import { Navbar } from '@/components/shared/Navbar';
 import LoginForm from '@/components/auth/LoginForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Suspense } from 'react';
 
 export default function LoginPage() {
   return (
@@ -14,7 +15,9 @@ export default function LoginPage() {
             <CardDescription>Log in to your Agentic Author account</CardDescription>
           </CardHeader>
           <CardContent>
-            <LoginForm />
+            <Suspense fallback={<div className="h-40 flex items-center justify-center">Loading...</div>}>
+              <LoginForm />
+            </Suspense>
           </CardContent>
         </Card>
       </div>
