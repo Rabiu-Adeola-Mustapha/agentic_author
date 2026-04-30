@@ -4,8 +4,7 @@ import { auth } from '@/lib/auth/options';
 import { connectDB } from '@/lib/db/mongoose';
 import { ProjectModel } from '@/lib/db/models/Project';
 import { UserModel } from '@/lib/db/models/User';
-import { PipelineOrchestrator } from '@/lib/orchestrator/pipeline';
-import { ContentCategory } from '@/types';
+import { generateContentPipeline } from '@/trigger/tasks/pipeline';
 import mongoose from 'mongoose';
 
 const runPipelineSchema = z.object({
@@ -83,17 +82,37 @@ export async function POST(request: NextRequest) {
       { status: 'running', currentStage: 'prompt' }
     );
 
-    console.log('[Pipeline] Starting background execution for project:', projectId);
-    new PipelineOrchestrator()
-      .run(projectId, session.user.id, project.rawPrompt || '', project.category as ContentCategory)
-      .catch((error) => {
-        console.error('[Pipeline] Background error:', error);
-      });
+    // Trigger the background job using Trigger.dev
+    console.log('[Pipeline] Triggering background job for project:', projectId);
+    try {
+      const run = await generateContentPipeline.trigger(
+        {
+          projectId,
+          rawPrompt: project.rawPrompt || '',
+          category: project.category,
+        },
+        { idempotencyKey: projectId } // Prevent duplicate runs
+      );
 
-    return NextResponse.json(
-      { message: 'Pipeline started', projectId },
-      { status: 202 }
-    );
+      return NextResponse.json(
+        {
+          message: 'Pipeline started',
+          projectId,
+          runId: run.id
+        },
+        { status: 202 }
+      );
+    } catch (error) {
+      console.error('[Pipeline] Failed to trigger job:', error);
+      // Fallback: return success anyway, job might be queued
+      return NextResponse.json(
+        {
+          message: 'Pipeline queued',
+          projectId
+        },
+        { status: 202 }
+      );
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import type { NextAuthConfig } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
@@ -62,18 +64,7 @@ export const authOptions: NextAuthConfig = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.userId as string;
-
-        // Fetch latest user plan from database to ensure it's up-to-date
-        try {
-          const { connectDB } = await import('@/lib/db/mongoose');
-          const { UserModel } = await import('@/lib/db/models/User');
-          await connectDB();
-          const user = await UserModel.findById(token.userId);
-          (session.user as any).plan = user?.subscription?.plan || token.plan || 'free';
-        } catch (error) {
-          console.error('Failed to fetch user plan in session callback:', error);
-          (session.user as any).plan = token.plan || 'free';
-        }
+        (session.user as any).plan = token.plan || 'free';
       }
       return session;
     },
