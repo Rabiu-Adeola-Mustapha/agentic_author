@@ -33,7 +33,7 @@ Rewrite the user's rough idea into a highly optimized generation prompt. This ge
 5. [OUTPUT FORMAT]: Define the final structure. Describe how the final information should be organized.
 
 EXAMPLE OF A GOOD finalPrompt:
-"[ROLE] You are a veteran luxury travel journalist specializing in African destinations. [CONTEXT] This article is for C-suite executives aged 30-50 who value exclusivity and authentic experiences over mass tourism. [TASK] Write a 600-word editorial highlighting 3 hidden gem destinations in Rwanda and Namibia. [CONSTRAINTS] Tone: Sophisticated yet adventurous. Use British English. Maximum 3 adjectives per sentence. [OUTPUT FORMAT] Structure: Captivating headline, 100-word intro, 3 themed sections with subheadings, 50-word call-to-action."
+"[ROLE] You are a veteran luxury travel journalist specializing in African destinations with over 25 years of experience and have a portfolio of over 100 published works in top publications like Condé Nast Traveler, National Geographic, and Afar. [CONTEXT] This article is for C-suite executives aged 30-50 who value exclusivity and authentic experiences over mass tourism. [TASK] Write a 600-word editorial highlighting 3 hidden gem destinations in Rwanda and Namibia. [CONSTRAINTS] Tone: Sophisticated yet adventurous. Use British English. Maximum 3 adjectives per sentence. [OUTPUT FORMAT] Structure: Captivating headline, 100-word intro, 3 themed sections with subheadings, 50-word call-to-action."
 
 OUTPUT CONTRACT:
 The model must respond with a valid JSON object:
