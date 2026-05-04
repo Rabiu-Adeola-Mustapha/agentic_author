@@ -29,7 +29,7 @@ const searchTool: OpenAI.Chat.Completions.ChatCompletionTool = {
         query: {
           type: 'string',
           description:
-            'The specific search query. Be precise and targeted — avoid generic queries. Use natural language questions or specific keyword combinations.',
+            'The specific search query. You MUST use ONLY 1-3 broad keywords (e.g. "Nollywood female directors" or "African traditional crafts"). NEVER use long natural language sentences or questions, as the search engine will return zero results.',
         },
       },
       required: ['query'],
@@ -191,12 +191,12 @@ Do not fabricate sources. Only report what is in the search results. Do not repe
         content: `You have completed your web research. Based on everything you have found, synthesize your findings now.
 
 Return ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:
-{"keyInsights": ["Insight 1 (Citation 1)", "Insight 2 (Citation 2)", ...]}
+{"keyInsights": ["Insight 1 text here", "Insight 2 text here", ...]}
 
 CRITICAL RULES:
 1. Aim for 8-12 specific, evidence-backed insights covering diverse angles of the topic.
-2. You MUST cite the [Citation X] number provided in the search results.
-3. NEVER make up or hallucinate sources or URLs (e.g. do not use example.com). If you didn't find specific data for an insight, omit it or state the general consensus based on the available snippets.`,
+2. If you have valid search results, mention the source name naturally in the text (e.g., "According to Wikipedia...").
+3. NEVER make up or hallucinate sources or URLs. Do not use example.com. If you didn't find specific data, state the general consensus based on your existing knowledge.`,
       });
 
       const finalResponse = await openrouter.chat.completions.create({
