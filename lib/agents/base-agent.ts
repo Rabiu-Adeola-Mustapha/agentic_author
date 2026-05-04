@@ -42,7 +42,8 @@ export abstract class BaseAgent<TInput extends AgentInput, TOutput> {
 
   protected async callLLM(
     systemPrompt: string,
-    userPrompt: string
+    userPrompt: string,
+    options: Partial<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming> = {}
   ): Promise<{ text: string; usage: { totalTokens: number } }> {
     if (!systemPrompt || systemPrompt.trim().length === 0) {
       throw new Error('System prompt is empty');
@@ -59,8 +60,9 @@ export abstract class BaseAgent<TInput extends AgentInput, TOutput> {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.7,
-        max_tokens: 4096,
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.max_tokens ?? 4096,
+        ...options
       });
 
       const text = response.choices[0]?.message?.content || '';

@@ -27,16 +27,10 @@ export const generateContentPipeline = task({
     const { projectId, rawPrompt, category, userId } = generatePromptSchema.parse(payload);
     const cat = category as ContentCategory;
 
-    // Add file logging to trace execution
-    const traceFile = path.join(process.cwd(), "logs", "trigger-trace.log");
-    fs.appendFileSync(traceFile, `\n[${new Date().toISOString()}] TASK START: ${projectId}\n`);
-    fs.appendFileSync(traceFile, `[${new Date().toISOString()}] Parsed payload\n`);
-
     logger.info("Task started", { projectId, category });
 
     try {
       await connectDB();
-      fs.appendFileSync(traceFile, `[${new Date().toISOString()}] Connected to DB\n`);
       const project = await ProjectModel.findById(projectId);
       if (!project) throw new Error("Project not found");
 
@@ -58,7 +52,7 @@ export const generateContentPipeline = task({
 
       // Run PromptWriter
       const promptWriter = new PromptWriter();
-      fs.appendFileSync(traceFile, `[${new Date().toISOString()}] Invoking PromptWriter...\n`);
+      logger.info("Invoking PromptWriter...", { projectId });
       const promptResult = await promptWriter.run({
         projectId,
         category: cat,
@@ -77,10 +71,8 @@ export const generateContentPipeline = task({
         { currentStage: "prompt_review", status: "awaiting_approval" }
       );
 
-      fs.appendFileSync(traceFile, `[${new Date().toISOString()}] DB updated to awaiting_approval\n`);
       return { success: true, projectId, status: "awaiting_approval" };
     } catch (error) {
-      fs.appendFileSync(traceFile, `[${new Date().toISOString()}] ERROR: ${error instanceof Error ? error.message : String(error)}\n`);
       logger.error("generate-content-pipeline failed", {
         projectId,
         error: error instanceof Error ? error.message : String(error),
