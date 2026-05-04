@@ -69,7 +69,7 @@ export default function LoginForm() {
           description: 'Logged in successfully',
         });
         const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
-        router.push(callbackUrl);
+        window.location.href = callbackUrl;
       }
     } catch (error) {
       toast({
