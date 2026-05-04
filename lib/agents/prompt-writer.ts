@@ -89,8 +89,9 @@ FORBIDDEN BEHAVIOURS:
       try {
         parsed = this.parseJsonResponse(result.text, promptOutputSchema) as unknown as PromptData;
       } catch (error) {
-        userPrompt += "\nYour previous response could not be parsed as valid JSON. Return only a valid JSON object. finalPrompt MUST be a single string with the 5 headings ([ROLE], [CONTEXT], [TASK], [CONSTRAINTS], [OUTPUT FORMAT]).";
-        result = await this.callLLM(systemMessage, userPrompt, { temperature: 0.2 });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        userPrompt += `\nYour previous response failed validation: ${errorMessage}\nReturn only a valid JSON object. finalPrompt MUST be a single string containing EXACTLY these 5 headings: [ROLE], [CONTEXT], [TASK], [CONSTRAINTS], [OUTPUT FORMAT].`;
+        result = await this.callLLM(systemMessage, userPrompt, { temperature: 0.1 });
         totalTokens += result.usage.totalTokens;
         parsed = this.parseJsonResponse(result.text, promptOutputSchema) as unknown as PromptData;
       }

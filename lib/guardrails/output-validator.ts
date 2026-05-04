@@ -41,7 +41,16 @@ export const promptOutputSchema = z.object({
       }
       return val;
     },
-    z.string()
+    z.string().superRefine((val, ctx) => {
+      const requiredHeadings = ['[ROLE]', '[CONTEXT]', '[TASK]', '[CONSTRAINTS]', '[OUTPUT FORMAT]'];
+      const missing = requiredHeadings.filter(h => !val.includes(h));
+      if (missing.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `The finalPrompt must include the exact headings: ${missing.join(', ')}`,
+        });
+      }
+    })
   ),
 });
 
