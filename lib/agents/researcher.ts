@@ -188,7 +188,15 @@ Do not fabricate sources. Only report what is in the search results. Do not repe
       console.log(`[Researcher] Phase 2: Forcing final synthesis after ${toolCallCount} searches.`);
       messages.push({
         role: 'user',
-        content: `You have completed your web research. Based on everything you have found, synthesize your findings now.\n\nReturn ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:\n{"keyInsights": ["Insight 1 (source: domain.com)", "Insight 2...", ...]}\n\nAim for 8-12 specific, evidence-backed insights covering diverse angles of the topic.`,
+        content: `You have completed your web research. Based on everything you have found, synthesize your findings now.
+
+Return ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:
+{"keyInsights": ["Insight 1 (Citation 1)", "Insight 2 (Citation 2)", ...]}
+
+CRITICAL RULES:
+1. Aim for 8-12 specific, evidence-backed insights covering diverse angles of the topic.
+2. You MUST cite the [Citation X] number provided in the search results.
+3. NEVER make up or hallucinate sources or URLs (e.g. do not use example.com). If you didn't find specific data for an insight, omit it or state the general consensus based on the available snippets.`,
       });
 
       const finalResponse = await openrouter.chat.completions.create({
