@@ -91,7 +91,7 @@ export function PipelineProgress({ projectId, initialStatus }: PipelineProgressP
         {STAGES.map((stage, index) => {
           const state = getStageState(stage.id, index);
           const isLast = index === STAGES.length - 1;
-          
+
           // Determine connector line color (from this stage to the next)
           let nextState = 'pending';
           if (!isLast) {
@@ -100,14 +100,20 @@ export function PipelineProgress({ projectId, initialStatus }: PipelineProgressP
           const isConnectorActive = state === 'completed' && (nextState === 'completed' || nextState === 'active' || nextState === 'failed');
 
           return (
-            <div key={stage.id} className="relative flex items-start">
+            <div
+              key={stage.id}
+              className={cn(
+                "relative flex items-start px-3 py-2 rounded-lg transition-all duration-300",
+                state === 'active' && "bg-indigo-500/15 border border-indigo-500/30 shadow-lg shadow-indigo-500/10"
+              )}
+            >
               {/* Connector Line */}
               {!isLast && (
-                <div 
+                <div
                   className={cn(
                     "absolute left-4 top-10 -ml-px h-full w-0.5",
                     isConnectorActive ? "bg-indigo-500" : "bg-zinc-800"
-                  )} 
+                  )}
                 />
               )}
 
@@ -119,8 +125,9 @@ export function PipelineProgress({ projectId, initialStatus }: PipelineProgressP
                 )}
                 {state === 'active' && (
                   <div className="relative flex h-8 w-8 items-center justify-center">
-                    <div className="absolute h-8 w-8 animate-ping rounded-full bg-indigo-500/30" />
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400 ring-2 ring-indigo-500">
+                    <div className="absolute h-8 w-8 animate-pulse rounded-full bg-indigo-500/40" />
+                    <div className="absolute h-10 w-10 animate-ping rounded-full border-2 border-indigo-500/40" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/30 text-indigo-300 ring-2 ring-indigo-400">
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
                   </div>
@@ -137,20 +144,27 @@ export function PipelineProgress({ projectId, initialStatus }: PipelineProgressP
                 )}
               </div>
 
-              <div className="ml-4 min-h-[4rem] pb-4 pt-1">
-                <p className={cn(
-                  "font-medium",
-                  state === 'active' ? "text-indigo-400 font-bold" : 
-                  state === 'completed' ? "text-zinc-100" : 
-                  state === 'failed' ? "text-red-400" : "text-zinc-600"
-                )}>
-                  {stage.label}
-                </p>
+              <div className="ml-4 min-h-[4rem] pb-4 pt-1 flex-1">
+                <div className="flex items-center justify-between">
+                  <p className={cn(
+                    "font-medium",
+                    state === 'active' ? "text-indigo-300 font-bold text-base" :
+                    state === 'completed' ? "text-zinc-100" :
+                    state === 'failed' ? "text-red-400" : "text-zinc-600"
+                  )}>
+                    {stage.label}
+                  </p>
+                  {state === 'active' && (
+                    <span className="px-2 py-1 ml-2 text-xs font-semibold bg-indigo-500/30 text-indigo-300 rounded-full ring-1 ring-indigo-500/40">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
                 {state === 'completed' && (
                   <p className="text-sm text-zinc-500">Completed</p>
                 )}
                 {state === 'active' && (
-                  <div className="flex items-center text-sm text-indigo-300/70">
+                  <div className="flex items-center text-sm text-indigo-300/80 font-medium mt-1">
                     <span>Running</span>
                     <span className="ml-1 flex w-4">
                       <span className="animate-[bounce_1.4s_infinite] inline-block">.</span>

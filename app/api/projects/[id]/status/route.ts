@@ -28,13 +28,33 @@ export async function GET(
     const project = await ProjectModel.findOne({
       _id: projectId,
       userId: session.user.id,
-    }).lean();
+    });
 
     if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
       );
+    }
+
+    // Auto-fail projects that have been stuck running for > 5 minutes
+    if (project.status === 'running') {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      // Use the raw updatedAt without touching the document
+      const lastUpdate = project.updatedAt instanceof Date 
+        ? project.updatedAt 
+        : new Date(project.updatedAt);
+      if (lastUpdate < fiveMinutesAgo) {
+        await ProjectModel.updateOne(
+          { _id: projectId },
+          { $set: { status: 'failed', currentStage: 'failed' } }
+        );
+        // Return failed immediately
+        return NextResponse.json(
+          { status: 'failed', currentStage: 'failed', updatedAt: new Date() },
+          { status: 200 }
+        );
+      }
     }
 
     return NextResponse.json(

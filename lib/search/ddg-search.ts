@@ -9,7 +9,10 @@ export interface SearchResult {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function searchWeb(query: string, maxResults: number = 5, retries: number = 2): Promise<SearchResult[]> {
+export async function searchWeb(query: string, maxResults: number = 5, retries: number = 3): Promise<SearchResult[]> {
+  // Initial jitter: wait 1-3s before every request to appear more human-like
+  await sleep(1000 + Math.random() * 2000);
+
   for (let i = 0; i <= retries; i++) {
     try {
       const response = await search(query, {
@@ -29,7 +32,8 @@ export async function searchWeb(query: string, maxResults: number = 5, retries: 
       const isRateLimit = errorMsg.includes('anomaly') || errorMsg.includes('too quickly');
       
       if (i < retries && isRateLimit) {
-        const waitTime = (i + 1) * 2000; // 2s, 4s backoff
+        // Exponential backoff: 5s, 10s, 15s
+        const waitTime = (i + 1) * 5000;
         console.warn(`DDG Rate limit hit for "${query}". Retrying in ${waitTime}ms... (Attempt ${i + 1}/${retries})`);
         await sleep(waitTime);
         continue;

@@ -26,6 +26,7 @@ const statusColors: Record<ProjectStatus, string> = {
   running: 'bg-indigo-500 animate-pulse',
   completed: 'bg-emerald-500',
   failed: 'bg-red-500',
+  awaiting_approval: 'bg-amber-500 animate-pulse',
 };
 
 const statusLabels: Record<ProjectStatus, string> = {
@@ -33,6 +34,7 @@ const statusLabels: Record<ProjectStatus, string> = {
   running: 'Generating...',
   completed: 'Ready',
   failed: 'Failed',
+  awaiting_approval: 'Action Required',
 };
 
 export function ProjectCard({ project, onDelete }: ProjectCardProps) {

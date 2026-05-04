@@ -4,6 +4,9 @@ import { connectDB } from '@/lib/db/mongoose';
 import { ProjectModel } from '@/lib/db/models/Project';
 import { OutputModel } from '@/lib/db/models/Output';
 import { EvaluationModel } from '@/lib/db/models/Evaluation';
+import { PromptModel } from '@/lib/db/models/Prompt';
+import { PlanModel } from '@/lib/db/models/Plan';
+import { ResearchModel } from '@/lib/db/models/Research';
 
 export async function GET(
   request: NextRequest,
@@ -26,19 +29,28 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // If project is completed, fetch output and evaluation
+    // If project is completed or waiting, fetch intermediate data
     let output = null;
     let evaluation = null;
+    let prompt = null;
+    let plan = null;
+    let research = null;
 
-    if (project.status === 'completed' || project.status === 'failed') {
+    if (project.status === 'completed' || project.status === 'failed' || project.status === 'awaiting_approval') {
       output = await OutputModel.findOne({ projectId }).lean();
       evaluation = await EvaluationModel.findOne({ projectId }).lean();
+      prompt = await PromptModel.findOne({ projectId }).lean();
+      plan = await PlanModel.findOne({ projectId }).lean();
+      research = await ResearchModel.findOne({ projectId }).lean();
     }
 
     return NextResponse.json({
       project,
       output,
       evaluation,
+      prompt,
+      plan,
+      research,
     });
   } catch (error) {
     console.error('Error fetching project:', error);

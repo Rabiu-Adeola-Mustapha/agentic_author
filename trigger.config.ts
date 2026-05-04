@@ -1,7 +1,7 @@
-import { TriggerClient } from "@trigger.dev/sdk";
+import { defineConfig } from "@trigger.dev/sdk";
 
-export const client = new TriggerClient({
-  id: "agentic_author",
-  apiKey: process.env.TRIGGER_API_KEY,
-  apiUrl: process.env.TRIGGER_API_URL,
+export default defineConfig({
+  project: "proj_yhycdicqbwnlrrkojasq", // replaced with actual project ID based on init command
+  runtime: "node",
+  maxDuration: 300,
 });

@@ -102,8 +102,7 @@ Do not be polite or encouraging — be brutally objective. Do not provide a scor
       });
 
       project.evaluationId = evaluation._id;
-      project.status = 'completed';
-      project.currentStage = 'done';
+      // We removed the status update here so the pipeline task can handle the review state
       
       await project.save();
 

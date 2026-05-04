@@ -1,3 +1,4 @@
+import { OpenAI } from 'openai';
 import { BaseAgent } from './base-agent';
 import { AgentInput, AgentResult, ResearchData, ContentCategory } from '@/types';
 import { connectDB } from '@/lib/db/mongoose';
@@ -5,13 +6,36 @@ import { ProjectModel } from '@/lib/db/models/Project';
 import { PromptModel } from '@/lib/db/models/Prompt';
 import { PlanModel } from '@/lib/db/models/Plan';
 import { ResearchModel } from '@/lib/db/models/Research';
-import { researchOutputSchema } from '@/lib/guardrails/output-validator';
 import { searchWeb } from '@/lib/search/ddg-search';
 import { MODELS } from '@/lib/config/models';
 
+const MAX_TOOL_CALLS = 7;
+
 interface ResearcherInput extends AgentInput {
   planId: string;
+  feedback?: string;
 }
+
+// Tool definition for the LLM to call
+const searchTool: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'search_web',
+    description:
+      'Search the web for information on a topic. Use this to find facts, statistics, examples, and credible sources relevant to the content project. Call this multiple times with different queries to gather comprehensive research.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description:
+            'The specific search query. Be precise and targeted — avoid generic queries. Use natural language questions or specific keyword combinations.',
+        },
+      },
+      required: ['query'],
+    },
+  },
+};
 
 export class Researcher extends BaseAgent<ResearcherInput, ResearchData> {
   readonly name = 'Researcher';
@@ -19,32 +43,36 @@ export class Researcher extends BaseAgent<ResearcherInput, ResearchData> {
 
   buildSystemMessage(category: ContentCategory): string {
     return `IDENTITY AND ROLE:
-The model is an expert research analyst trained in synthesising information from multiple sources quickly and accurately. It receives raw web search snippets and must extract only the most useful, relevant, and credible insights for a specific content project. It does not write content — it distils research into a clean, usable insight list.
+You are a world-class research analyst embedded in an AI content pipeline. You have access to a real-time web search tool. Your mission is to gather the most relevant, credible, and insightful information for a specific content project by strategically calling the search tool.
 
 PRIMARY TASK:
-Review all the search result snippets provided. Each snippet has a source domain attached. Identify the 8-12 most important factual insights, statistics, arguments, or examples that are directly relevant to the content described in the finalPrompt. Prioritise recent sources, authoritative sources (academic journals, government bodies, established news organisations, industry reports), and sources that provide concrete data points or specific examples. Ignore snippets from content farms, low-quality blogs, or sources that are tangentially related to the topic.
+You will be given a content brief (the finalPrompt). Your job is to:
+1. Analyse the brief to identify the key topics, angles, and knowledge gaps that must be filled.
+2. Call the search_web tool strategically — start broad, then drill into specific subtopics based on what you find.
+3. After each search result, decide whether to search again for more depth or a new angle.
+4. Stop searching when you have gathered 8-12 high-quality, diverse insights covering the topic comprehensively.
 
-OUTPUT CONTRACT:
-Respond with a valid JSON object and nothing else. The object must have one key: keyInsights, which is an array of 8-12 strings. Each string must be a single, complete, self-contained sentence in neutral third-person prose. Each string must end with the source domain in parentheses formatted as "(source: domainname.com)". Each insight must be specific enough to be used as supporting evidence in the content — vague paraphrases of common knowledge do not qualify as insights.
-
-QUALITY STANDARDS:
-Insights must collectively cover a range of perspectives: factual background, current state of knowledge, key debates, supporting statistics, and concrete examples or case studies. No two insights may convey substantially the same information. Insights that begin with "It is important to..." or "Research shows that..." without citing a specific source or data point are not acceptable — every insight must be grounded in a specific snippet.
+TOOL CALLING STRATEGY:
+- First call: Search for the core topic and get an overview.
+- Subsequent calls: Drill into specific angles you discovered — statistics, recent events, expert opinions, case studies.
+- Vary your queries to cover different aspects: historical context, current trends, cultural nuance, data/statistics, notable examples.
+- You have a maximum of ${MAX_TOOL_CALLS} searches. Use them wisely.
 
 CATEGORY-SPECIFIC RULES:
 ${this.buildCategoryContext(category)}
-For thesis and journal categories: prioritise academic, institutional, and government sources. Flag insights from peer-reviewed sources with "(peer-reviewed source: domainname.com)" instead of just source.
-For book and screenplay categories: prioritise insights about historical accuracy, cultural context, psychological profiles, or real events that could inform the narrative. Label these appropriately.
-For educational categories: prioritise insights from education research, curriculum standards bodies, and pedagogical literature.
+For thesis and journal: prioritise peer-reviewed sources. Tag them as "(peer-reviewed source: domain.com)".
+For book and screenplay: prioritise cultural, historical, and psychological insights.
+For educational: prioritise research from educational institutions and pedagogical literature.
 
 FORBIDDEN BEHAVIOURS:
-Do not fabricate statistics or invent sources — only report what is present in the provided snippets. Do not include insights that are not relevant to the topic even if they come from authoritative sources. Do not produce fewer than 8 insights unless the search results genuinely do not contain 8 relevant pieces of information — in that case, note the limitation at the end of the insights array as a final string beginning with "NOTE:". Do not combine two separate insights into one string.`;
+Do not fabricate sources. Only report what is in the search results. Do not repeat the same insight twice.`;
   }
 
   async run(input: ResearcherInput): Promise<AgentResult<ResearchData>> {
     try {
       await this.updateProjectStage(input.projectId, 'research');
       await connectDB();
-      
+
       const project = await ProjectModel.findById(input.projectId);
       if (!project) throw new Error('Project not found');
 
@@ -54,84 +82,154 @@ Do not fabricate statistics or invent sources — only report what is present in
       const promptData = await PromptModel.findById(project.promptId);
       if (!promptData) throw new Error('Prompt not found');
 
-      let numQueries = 2;
-      const depth = this.buildCategoryContext(project.category).match(/Research Depth: (light|moderate|deep)/)?.[1] || 'light';
-      if (depth === 'moderate') numQueries = 3;
-      if (depth === 'deep') numQueries = 5;
+      const systemMessage = this.buildSystemMessage(project.category);
 
-      const queriesToRun = (plan.searchQueries || []).slice(0, numQueries);
-
-      const searchResultsArray: any[] = [];
-      for (let i = 0; i < queriesToRun.length; i++) {
-        const query = queriesToRun[i];
-        console.log(`[Researcher] Searching (${i + 1}/${queriesToRun.length}): ${query}`);
-        
-        const results = await searchWeb(query).catch(() => []);
-        if (results && results.length > 0) {
-          searchResultsArray.push(results);
-        }
-
-        // Sequential delay with jitter to avoid pattern detection
-        if (i < queriesToRun.length - 1) {
-          const delay = 1000 + Math.random() * 1000; // 1-2s delay
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
+      let initialUserMessage = `CONTENT BRIEF (finalPrompt):\n${promptData.finalPrompt}\n\n`;
+      initialUserMessage += `SUGGESTED STARTING QUERIES (from the content plan):\n${(plan.searchQueries || []).join('\n')}\n\n`;
+      if (input.feedback) {
+        initialUserMessage += `USER GUIDANCE / ADDITIONAL DIRECTION:\n${input.feedback}\n\n`;
       }
+      initialUserMessage += `Begin your research now. Call the search_web tool to find relevant information. You may call it up to ${MAX_TOOL_CALLS} times.`;
 
-      let allResults = searchResultsArray.flat();
-      
-      // Deduplicate by URL
-      const uniqueResultsMap = new Map();
-      for (const res of allResults) {
-        if (!uniqueResultsMap.has(res.url)) {
-          uniqueResultsMap.set(res.url, res);
-        }
-      }
-      
-      allResults = Array.from(uniqueResultsMap.values());
-      allResults.sort((a, b) => (b.score || 0) - (a.score || 0));
-      allResults = allResults.slice(0, 15);
+      const openrouter = new OpenAI({
+        baseURL: 'https://openrouter.ai/api/v1',
+        apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
+        defaultHeaders: {
+          'HTTP-Referer': process.env.NEXTAUTH_URL || 'http://localhost:3000',
+          'X-Title': 'Agentic Author',
+        },
+      });
 
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: initialUserMessage },
+      ];
+
+      let totalTokens = 0;
+      let toolCallCount = 0;
+      const allSources: { title: string; url: string; snippet: string; score?: number }[] = [];
       const citationMap: Record<string, number> = {};
       let citationCounter = 1;
-      
-      const formattedSnippets = allResults.map(res => {
-        let domain = 'unknown';
-        try {
-          const urlObj = new URL(res.url);
-          domain = urlObj.hostname;
-        } catch {
-          // ignore
+
+      // === PHASE 1: Adaptive Tool-Calling Loop ===
+      while (toolCallCount < MAX_TOOL_CALLS) {
+        console.log(`[Researcher] Tool-calling loop iteration ${toolCallCount + 1}/${MAX_TOOL_CALLS}`);
+
+        const response = await openrouter.chat.completions.create({
+          model: this.model,
+          messages,
+          tools: [searchTool],
+          tool_choice: toolCallCount < 2 ? 'required' : 'auto',
+          temperature: 0.3,
+          max_tokens: 2048,
+        });
+
+        totalTokens += response.usage?.total_tokens || 0;
+        const message = response.choices[0]?.message;
+
+        if (!message) break;
+
+        messages.push({
+          role: 'assistant',
+          content: message.content || null,
+          ...(message.tool_calls ? { tool_calls: message.tool_calls } : {}),
+        } as OpenAI.Chat.Completions.ChatCompletionMessageParam);
+
+        if (response.choices[0].finish_reason === 'stop' || !message.tool_calls?.length) {
+          console.log(`[Researcher] LLM chose to stop searching after ${toolCallCount} searches.`);
+          break;
         }
-        
-        if (!citationMap[res.url]) {
-          citationMap[res.url] = citationCounter++;
+
+        for (const toolCall of message.tool_calls) {
+          if (toolCall.type !== 'function' || toolCall.function.name !== 'search_web') continue;
+
+          let query = '';
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            query = args.query;
+          } catch {
+            query = toolCall.function.arguments;
+          }
+
+          console.log(`[Researcher] Tool Call ${toolCallCount + 1}: Searching for "${query}"`);
+          toolCallCount++;
+
+          const results = await searchWeb(query).catch(() => []);
+
+          for (const res of results) {
+            if (!citationMap[res.url]) {
+              citationMap[res.url] = citationCounter++;
+              allSources.push(res);
+            }
+          }
+
+          const formattedResults =
+            results.length > 0
+              ? results
+                  .map((res) => {
+                    let domain = 'unknown';
+                    try {
+                      domain = new URL(res.url).hostname;
+                    } catch {}
+                    return `[Citation ${citationMap[res.url]}] Source: ${domain}\nTitle: ${res.title}\nSnippet: ${res.snippet}`;
+                  })
+                  .join('\n\n')
+              : 'No results found for this query. Try a different search term.';
+
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: formattedResults,
+          });
         }
-        
-        return `[Citation ${citationMap[res.url]}] Source: ${domain}\nTitle: ${res.title}\nSnippet: ${res.snippet}\n`;
-      }).join('\n');
+      }
 
-      const systemMessage = this.buildSystemMessage(project.category);
-      let userPrompt = `TOPIC CONTEXT (Final Prompt):\n${promptData.finalPrompt}\n\nSEARCH RESULTS:\n${formattedSnippets}`;
+      // === PHASE 2: Force Final Synthesis (no tools) ===
+      console.log(`[Researcher] Phase 2: Forcing final synthesis after ${toolCallCount} searches.`);
+      messages.push({
+        role: 'user',
+        content: `You have completed your web research. Based on everything you have found, synthesize your findings now.\n\nReturn ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:\n{"keyInsights": ["Insight 1 (source: domain.com)", "Insight 2...", ...]}\n\nAim for 8-12 specific, evidence-backed insights covering diverse angles of the topic.`,
+      });
 
-      let result = await this.callLLM(systemMessage, userPrompt);
-      let totalTokens = result.usage.totalTokens;
+      const finalResponse = await openrouter.chat.completions.create({
+        model: this.model,
+        messages,
+        tool_choice: 'none',
+        temperature: 0.3,
+        max_tokens: 4096,
+      });
 
-      let parsed: { keyInsights: string[] };
+      totalTokens += finalResponse.usage?.total_tokens || 0;
+      const finalText = finalResponse.choices[0]?.message?.content || '';
+      console.log(`[Researcher] Final synthesis received. Length: ${finalText.length} chars.`);
+
+      let keyInsights: string[] = [];
       try {
-        parsed = this.parseJsonResponse(result.text, researchOutputSchema);
-      } catch (error) {
-        userPrompt += "\nYour previous response could not be parsed as valid JSON. Return only a valid JSON object with the exact key keyInsights. No other text.";
-        result = await this.callLLM(systemMessage, userPrompt);
-        totalTokens += result.usage.totalTokens;
-        parsed = this.parseJsonResponse(result.text, researchOutputSchema);
+        let cleanText = finalText.trim();
+        if (cleanText.startsWith('```')) {
+          const match = cleanText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (match?.[1]) cleanText = match[1];
+        }
+        const parsed = JSON.parse(cleanText);
+        keyInsights = parsed.keyInsights || [];
+      } catch {
+        console.warn('[Researcher] Could not parse final JSON, extracting from text...');
+        keyInsights = finalText
+          .split('\n')
+          .filter((line) => line.trim().startsWith('-') || line.trim().match(/^\d+\./))
+          .map((line) => line.replace(/^[-\d.]\s*/, '').trim())
+          .filter(Boolean);
+      }
+
+      if (keyInsights.length === 0) {
+        throw new Error('Researcher agent returned no key insights');
       }
 
       const research = await ResearchModel.create({
         projectId: input.projectId,
         planId: input.planId,
-        sources: allResults,
-        keyInsights: parsed.keyInsights,
+        sources: allSources,
+        keyInsights,
         citationMap,
       });
 
@@ -141,8 +239,8 @@ Do not fabricate statistics or invent sources — only report what is present in
       return {
         success: true,
         data: {
-          sources: allResults,
-          keyInsights: parsed.keyInsights,
+          sources: allSources,
+          keyInsights,
         },
         tokensUsed: totalTokens,
       };

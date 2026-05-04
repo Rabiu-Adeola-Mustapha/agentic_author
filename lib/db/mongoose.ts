@@ -2,13 +2,13 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI as string;
 
-if (!MONGODB_URI) {
-  throw new Error('MONGODB_URI environment variable is not defined');
-}
-
 let cached = (global as any).mongoose || { conn: null, promise: null };
 
 export async function connectDB(): Promise<typeof mongoose> {
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is not defined');
+  }
+
   if (cached.conn) {
     return cached.conn;
   }

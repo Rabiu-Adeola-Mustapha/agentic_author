@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth/options';
 import { connectDB } from '@/lib/db/mongoose';
 import { ProjectModel } from '@/lib/db/models/Project';
 import { UserModel } from '@/lib/db/models/User';
-import { generateContentPipeline } from '@/trigger/tasks/pipeline';
+import { tasks } from '@trigger.dev/sdk';
 import mongoose from 'mongoose';
 
 const runPipelineSchema = z.object({
@@ -49,6 +49,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Guard: don't re-trigger if already running
+    if (project.status === 'running') {
+      return NextResponse.json(
+        { error: 'Pipeline is already running for this project.' },
+        { status: 409 }
+      );
+    }
+
     const user = await UserModel.findById(session.user.id);
     if (!user) {
       return NextResponse.json(
@@ -77,6 +85,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Mark as running in DB
     await ProjectModel.updateOne(
       { _id: projectId },
       { status: 'running', currentStage: 'prompt' }
@@ -85,32 +94,33 @@ export async function POST(request: NextRequest) {
     // Trigger the background job using Trigger.dev
     console.log('[Pipeline] Triggering background job for project:', projectId);
     try {
-      const run = await generateContentPipeline.trigger(
+      const idempotencyKey = `${projectId}_prompt_${Date.now()}`;
+      const run = await tasks.trigger(
+        "generate-content-pipeline",
         {
           projectId,
           rawPrompt: project.rawPrompt || '',
           category: project.category,
+          userId: session.user.id,
         },
-        { idempotencyKey: projectId } // Prevent duplicate runs
+        { idempotencyKey }
       );
 
+      console.log('[Pipeline] Job triggered successfully, run ID:', run.id);
       return NextResponse.json(
-        {
-          message: 'Pipeline started',
-          projectId,
-          runId: run.id
-        },
+        { message: 'Pipeline started', projectId, runId: run.id },
         { status: 202 }
       );
     } catch (error) {
-      console.error('[Pipeline] Failed to trigger job:', error);
-      // Fallback: return success anyway, job might be queued
+      // Revert DB status if task triggering failed
+      console.error('[Pipeline] Failed to trigger job, reverting DB status:', error);
+      await ProjectModel.updateOne(
+        { _id: projectId },
+        { status: 'failed', currentStage: 'failed' }
+      );
       return NextResponse.json(
-        {
-          message: 'Pipeline queued',
-          projectId
-        },
-        { status: 202 }
+        { error: 'Failed to start pipeline. Please try again.' },
+        { status: 500 }
       );
     }
   } catch (error) {

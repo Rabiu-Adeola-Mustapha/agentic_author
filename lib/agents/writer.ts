@@ -11,6 +11,7 @@ import { MODELS } from '@/lib/config/models';
 
 interface WriterInput extends AgentInput {
   researchId: string;
+  feedback?: string;
 }
 
 export class Writer extends BaseAgent<WriterInput, OutputData> {
@@ -61,6 +62,11 @@ Do not write an introduction or conclusion to the overall document unless you ar
       const research = await ResearchModel.findById(input.researchId);
       if (!research) throw new Error('Research not found');
 
+      let previousOutput: any = null;
+      if (input.feedback && project.outputId) {
+        previousOutput = await OutputModel.findById(project.outputId);
+      }
+
       const systemMessage = this.buildSystemMessage(project.category);
 
       let totalTokens = 0;
@@ -74,8 +80,22 @@ Do not write an introduction or conclusion to the overall document unless you ar
         userPrompt += `FORMATTING RULES:\n${JSON.stringify(plan.formattingRules, null, 2)}\n\n`;
         userPrompt += `KEY INSIGHTS:\n${research.keyInsights.join('\n')}\n\n`;
         userPrompt += `FULL DOCUMENT STRUCTURE:\n${plan.structure.map((s: any) => s.title).join(', ')}\n\n`;
-        userPrompt += `=========================\n`;
-        userPrompt += `YOUR TASK: Write ONLY the following section.\n`;
+        
+        if (input.feedback && previousOutput) {
+          const prevSection = previousOutput.sections.find((s: any) => s.title === section.title);
+          if (prevSection) {
+            userPrompt += `=========================\n`;
+            userPrompt += `EVALUATOR FEEDBACK / INSTRUCTION:\n${input.feedback}\n\n`;
+            userPrompt += `PREVIOUS DRAFT FOR THIS SECTION:\n${prevSection.content}\n\n`;
+            userPrompt += `YOUR TASK: Rewrite the previous draft for the following section, specifically addressing the Evaluator Feedback. Maintain all quality standards and formatting rules.\n`;
+          } else {
+            userPrompt += `YOUR TASK: Write ONLY the following section.\n`;
+          }
+        } else {
+          userPrompt += `=========================\n`;
+          userPrompt += `YOUR TASK: Write ONLY the following section.\n`;
+        }
+        
         userPrompt += `SECTION TITLE: ${section.title}\n`;
         userPrompt += `SECTION DESCRIPTION: ${section.description}\n`;
         userPrompt += `TARGET WORD COUNT: ${section.estimatedWords} words\n`;
@@ -102,17 +122,25 @@ Do not write an introduction or conclusion to the overall document unless you ar
         }
       }
 
-      const output = await OutputModel.create({
-        projectId: input.projectId,
-        planId: plan._id,
-        researchId: input.researchId,
-        content: fullContent.trim(),
-        sections: allSections,
-        wordCount: totalWordCount,
-      });
-
-      project.outputId = output._id;
-      await project.save();
+      let outputId = project.outputId;
+      if (input.feedback && previousOutput) {
+        previousOutput.content = fullContent.trim();
+        previousOutput.sections = allSections;
+        previousOutput.wordCount = totalWordCount;
+        await previousOutput.save();
+      } else {
+        const output = await OutputModel.create({
+          projectId: input.projectId,
+          planId: plan._id,
+          researchId: input.researchId,
+          content: fullContent.trim(),
+          sections: allSections,
+          wordCount: totalWordCount,
+        });
+        outputId = output._id as any;
+        project.outputId = outputId;
+        await project.save();
+      }
 
       return {
         success: true,

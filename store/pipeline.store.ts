@@ -46,7 +46,7 @@ export const usePipelineStore = create<PipelineState>((set, get) => ({
           errorMessage: null,
         });
 
-        if (data.status === 'completed' || data.status === 'failed') {
+        if (data.status === 'completed' || data.status === 'failed' || data.status === 'awaiting_approval') {
           get().stopPolling();
         }
       } catch (err) {

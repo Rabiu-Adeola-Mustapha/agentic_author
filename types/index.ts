@@ -10,14 +10,18 @@ export type ContentCategory =
 export type PipelineStage =
   | 'idle'
   | 'prompt'
+  | 'prompt_review'
   | 'plan'
+  | 'plan_review'
   | 'research'
+  | 'research_review'
   | 'writing'
   | 'evaluation'
+  | 'evaluation_review'
   | 'done'
   | 'failed';
 
-export type ProjectStatus = 'draft' | 'running' | 'completed' | 'failed';
+export type ProjectStatus = 'draft' | 'running' | 'awaiting_approval' | 'completed' | 'failed';
 
 export type SubscriptionPlan = 'free' | 'pro';
 
@@ -127,3 +131,22 @@ export interface SerializedEvaluation {
   passedThreshold: boolean;
 }
 
+export interface SerializedPrompt {
+  _id: string;
+  projectId: string;
+  structuredIntent: any;
+  finalPrompt: string;
+}
+
+export interface SerializedPlan {
+  _id: string;
+  projectId: string;
+  structure: any[];
+}
+
+export interface SerializedResearch {
+  _id: string;
+  projectId: string;
+  sources: any[];
+  keyInsights: string[];
+}

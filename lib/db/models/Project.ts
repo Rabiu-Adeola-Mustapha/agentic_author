@@ -39,12 +39,12 @@ const projectSchema = new Schema<IProject>(
     },
     status: {
       type: String,
-      enum: ['draft', 'running', 'completed', 'failed'],
+      enum: ['draft', 'running', 'awaiting_approval', 'completed', 'failed'],
       default: 'draft',
     },
     currentStage: {
       type: String,
-      enum: ['idle', 'prompt', 'plan', 'research', 'writing', 'evaluation', 'done', 'failed'],
+      enum: ['idle', 'prompt', 'prompt_review', 'plan', 'plan_review', 'research', 'research_review', 'writing', 'evaluation', 'evaluation_review', 'done', 'failed'],
       default: 'idle',
     },
     promptId: Schema.Types.ObjectId,

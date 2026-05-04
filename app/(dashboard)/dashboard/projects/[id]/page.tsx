@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useCallback } from 'react';
 import { usePipelineStore } from '@/store/pipeline.store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Download, Check, AlertCircle, Sparkles, BookOpen, ArrowRight, Zap } from 'lucide-react';
+import { Download, Check, AlertCircle, Sparkles, BookOpen, ArrowRight, Zap, Loader2, Play, RotateCcw } from 'lucide-react';
 
 const STAGES = [
   { name: 'prompt', label: 'Prompt', icon: '🎯' },
@@ -23,34 +23,247 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isContinuing, setIsContinuing] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [editedPrompt, setEditedPrompt] = useState('');
+  const [promptFeedback, setPromptFeedback] = useState('');
+  const [researchFeedback, setResearchFeedback] = useState('');
+  const [evaluationFeedback, setEvaluationFeedback] = useState('');
+  const [isIterating, setIsIterating] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [isIteratingResearch, setIsIteratingResearch] = useState(false);
+  const [isExecutingWriting, setIsExecutingWriting] = useState(false);
+  const [isIteratingWriter, setIsIteratingWriter] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   const { startPolling, stopPolling, currentStage, status } = usePipelineStore();
 
-  useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const res = await fetch(`/api/projects/${projectId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setProject(data);
-
-          if (data.status === 'running' || data.status === 'draft') {
-            startPolling(projectId);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch project:', error);
-      } finally {
-        setLoading(false);
+  const handleStart = async () => {
+    setIsStarting(true);
+    try {
+      const res = await fetch('/api/pipeline/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      });
+      if (res.ok) {
+        startPolling(projectId);
       }
-    };
+    } catch (e) {
+      console.error('Failed to start pipeline', e);
+    } finally {
+      setIsStarting(false);
+    }
+  };
 
-    fetchProject();
+  const handleContinue = async () => {
+    setIsContinuing(true);
+    try {
+      const res = await fetch('/api/pipeline/continue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      });
+      if (res.ok) {
+        startPolling(projectId);
+        // Optimistically update status
+        setProject((prev: any) => ({ ...prev, status: 'running', currentStage: 'plan' }));
+      }
+    } catch (e) {
+      console.error('Failed to continue pipeline', e);
+    } finally {
+      setIsContinuing(false);
+    }
+  };
+
+  const handleIterate = async () => {
+    if (!promptFeedback.trim()) return;
+    setIsIterating(true);
+    try {
+      const res = await fetch('/api/pipeline/iterate-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, feedback: promptFeedback }),
+      });
+      if (res.ok) {
+        setPromptFeedback('');
+        startPolling(projectId);
+        setProject((prev: any) => ({ ...prev, status: 'running', currentStage: 'prompt' }));
+      }
+    } catch (e) {
+      console.error('Failed to iterate prompt', e);
+    } finally {
+      setIsIterating(false);
+    }
+  };
+
+  const handleExecuteResearch = async () => {
+    setIsExecuting(true);
+    try {
+      const res = await fetch('/api/pipeline/execute-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      });
+      if (res.ok) {
+        startPolling(projectId);
+        setProject((prev: any) => ({ ...prev, status: 'running', currentStage: 'research' }));
+      }
+    } catch (e) {
+      console.error('Failed to execute research', e);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  const handleIterateResearch = async () => {
+    if (!researchFeedback.trim()) return;
+    setIsIteratingResearch(true);
+    try {
+      const res = await fetch('/api/pipeline/iterate-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, feedback: researchFeedback }),
+      });
+      if (res.ok) {
+        setResearchFeedback('');
+        startPolling(projectId);
+        setProject((prev: any) => ({ ...prev, status: 'running', currentStage: 'research' }));
+      }
+    } catch (e) {
+      console.error('Failed to iterate research', e);
+    } finally {
+      setIsIteratingResearch(false);
+    }
+  };
+
+  const handleExecuteWriting = async () => {
+    setIsExecutingWriting(true);
+    try {
+      const res = await fetch('/api/pipeline/execute-writing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      });
+      if (res.ok) {
+        startPolling(projectId);
+        setProject((prev: any) => ({ ...prev, status: 'running', currentStage: 'writing' }));
+      }
+    } catch (e) {
+      console.error('Failed to execute writing', e);
+    } finally {
+      setIsExecutingWriting(false);
+    }
+  };
+
+  const handleIterateWriter = async () => {
+    if (!evaluationFeedback.trim()) return;
+    setIsIteratingWriter(true);
+    try {
+      const res = await fetch('/api/pipeline/iterate-writer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, feedback: evaluationFeedback }),
+      });
+      if (res.ok) {
+        setEvaluationFeedback('');
+        startPolling(projectId);
+        setProject((prev: any) => ({ ...prev, status: 'running', currentStage: 'writing' }));
+      }
+    } catch (e) {
+      console.error('Failed to iterate writer', e);
+    } finally {
+      setIsIteratingWriter(false);
+    }
+  };
+
+  const handleFinalize = async () => {
+    setIsFinalizing(true);
+    try {
+      const res = await fetch('/api/pipeline/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      });
+      if (res.ok) {
+        setProject((prev: any) => ({ ...prev, status: 'completed', currentStage: 'done' }));
+      }
+    } catch (e) {
+      console.error('Failed to finalize project', e);
+    } finally {
+      setIsFinalizing(false);
+    }
+  };
+
+  const handleReset = async () => {
+    setIsResetting(true);
+    stopPolling();
+    try {
+      const res = await fetch(`/api/projects/${projectId}/reset`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        // Reset local state
+        setProject((prev: any) => ({ ...prev, status: 'draft', currentStage: 'idle' }));
+      } else {
+        console.error('Reset failed:', await res.text());
+      }
+    } catch (e) {
+      console.error('Failed to reset pipeline', e);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const fetchProjectData = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}`);
+      if (res.ok) {
+        const data = await res.json();
+        
+        const mergedProject = {
+          ...data.project,
+          output: data.output,
+          evaluation: data.evaluation,
+          prompt: data.prompt,
+          plan: data.plan,
+          research: data.research
+        };
+        
+        setProject(mergedProject);
+
+        // Only auto-poll if it was already 'awaiting_approval' (safe state)
+        if (mergedProject.status === 'awaiting_approval') {
+          startPolling(projectId);
+        }
+
+        if (data.prompt?.finalPrompt) {
+          setEditedPrompt(data.prompt.finalPrompt);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch project:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, startPolling]);
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchProjectData();
 
     return () => {
       stopPolling();
     };
-  }, [projectId, startPolling, stopPolling]);
+  }, [fetchProjectData, stopPolling]);
+
+  // Refetch data when polling detects a state transition to a terminal/review state
+  useEffect(() => {
+    if (status === 'awaiting_approval' || status === 'completed') {
+      fetchProjectData();
+    }
+  }, [status, fetchProjectData]);
 
   const stageIndex = STAGES.findIndex(s => s.name === (currentStage || project?.currentStage));
   const progress = Math.max(0, ((stageIndex + 1) / STAGES.length) * 100);
@@ -95,10 +308,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const currentStatus = status || project.status;
-  const currentStageDisplay = currentStage || project.currentStage;
+  const currentStatus = (!status || status === 'idle') ? project.status : status;
+  const currentStageDisplay = (!currentStage || currentStage === 'idle') ? project.currentStage : currentStage;
   const isRunning = currentStatus === 'running';
   const isCompleted = currentStatus === 'completed';
+  const isAwaitingApproval = currentStatus === 'awaiting_approval';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
@@ -124,11 +338,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 animate-pulse'
                       : isCompleted
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                        : 'bg-zinc-800/50 text-zinc-300 border-zinc-700/50'
+                        : isAwaitingApproval
+                          ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+                          : 'bg-zinc-800/50 text-zinc-300 border-zinc-700/50'
                   }`}
                 >
                   {isRunning && <Zap className="w-3 h-3 mr-2" />}
-                  {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}
+                  {isAwaitingApproval ? 'Awaiting Your Approval' : currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}
                 </Badge>
 
                 {isRunning && (
@@ -140,28 +356,42 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            {project.output && (
-              <div className="flex gap-2 shrink-0">
+            <div className="flex gap-2 shrink-0">
+              {/* Reset button for stuck/failed states */}
+              {(isRunning || currentStatus === 'failed' || isAwaitingApproval) && (
                 <Button
-                  onClick={() => handleExport('pdf')}
-                  disabled={exporting}
-                  className="border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/80 transition-all"
+                  onClick={handleReset}
+                  disabled={isResetting}
                   variant="outline"
+                  className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500/60 transition-all"
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  PDF
+                  {isResetting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+                  Reset Pipeline
                 </Button>
-                <Button
-                  onClick={() => handleExport('docx')}
-                  disabled={exporting}
-                  className="border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/80 transition-all"
-                  variant="outline"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  DOCX
-                </Button>
-              </div>
-            )}
+              )}
+              {project.output && (
+                <>
+                  <Button
+                    onClick={() => handleExport('pdf')}
+                    disabled={exporting}
+                    className="border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/80 transition-all"
+                    variant="outline"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    PDF
+                  </Button>
+                  <Button
+                    onClick={() => handleExport('docx')}
+                    disabled={exporting}
+                    className="border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/80 transition-all"
+                    variant="outline"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    DOCX
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -401,26 +631,482 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         )}
 
         {/* Waiting State */}
-        {!project.output && (
+        {!project.output && currentStatus !== 'awaiting_approval' && (
           <section className="flex items-center justify-center py-32">
             <div className="text-center max-w-md">
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500/30 to-purple-500/20 border border-indigo-500/30 mb-8 animate-pulse">
                 <Sparkles className="w-10 h-10 text-indigo-400 animate-spin" />
               </div>
               <h3 className="text-2xl font-sora font-bold text-zinc-100 mb-3">
-                {currentStatus === 'draft' ? '🚀 Ready to Generate' : '⏳ Generating Content'}
+                {currentStatus === 'draft' ? '🚀 Ready to Generate' : currentStatus === 'failed' ? '⚠️ Generation Failed' : '⏳ Generating Content'}
               </h3>
               <p className="text-zinc-400 mb-6">
                 {currentStatus === 'draft'
                   ? 'Click the start button to begin your 6-stage AI generation pipeline'
+                  : currentStatus === 'failed'
+                  ? 'The pipeline encountered an error. Please click the button below to retry.'
                   : `Your content is being created using advanced AI. Current stage: ${currentStageDisplay || 'processing'}...`}
               </p>
-              {isRunning && (
-                <div className="flex justify-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              
+              {currentStatus === 'draft' || currentStatus === 'failed' || (currentStatus === 'running' && currentStageDisplay === 'idle') ? (
+                <Button onClick={handleStart} disabled={isStarting} className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-8 py-6 rounded-full transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-500/20 text-lg">
+                  {isStarting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5 fill-current" />}
+                  {currentStatus === 'failed' ? 'Retry Generation' : 'Start Generation'}
+                </Button>
+              ) : currentStatus === 'running' ? (
+                <div className="flex flex-col items-center">
+                  <div className="flex justify-center gap-2 mb-6">
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <Button variant="outline" onClick={handleStart} disabled={isStarting} className="border-zinc-700 bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                    {isStarting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4 fill-current" />}
+                    Restart Pipeline
+                  </Button>
                 </div>
+              ) : null}
+            </div>
+          </section>
+        )}
+
+        {/* Approval States */}
+        {currentStatus === 'awaiting_approval' && currentStageDisplay === 'prompt_review' && (
+          <section className="py-8">
+            <div className="mb-8">
+              <h2 className="text-2xl font-sora font-bold text-zinc-100 flex items-center gap-3 mb-2">
+                <Check className="w-6 h-6 text-emerald-400" />
+                Prompt Generated
+              </h2>
+              <p className="text-sm text-zinc-400">Review the generated prompt. You can iterate by providing feedback, or approve it to move to the Planning stage.</p>
+            </div>
+            
+            <Card className="border-zinc-800 bg-zinc-900/30 mb-6">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-zinc-100">Current Prompt Version</h3>
+                  {project.prompt?.versions?.length > 0 && (
+                    <Badge variant="outline" className="border-indigo-500/30 text-indigo-400">
+                      Version {project.prompt.versions.length}
+                    </Badge>
+                  )}
+                </div>
+                <div className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-6 text-zinc-200 min-h-[200px] font-mono text-sm leading-relaxed whitespace-pre-wrap overflow-auto">
+                  {editedPrompt || project.prompt?.finalPrompt || 'No prompt generated yet.'}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-zinc-800 bg-zinc-900/30 border-dashed">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-zinc-100 mb-2">Iterate Prompt</h3>
+                <p className="text-xs text-zinc-400 mb-4">Not quite right? Provide feedback and the AI will rewrite the prompt.</p>
+                <textarea
+                  value={promptFeedback}
+                  onChange={(e) => setPromptFeedback(e.target.value)}
+                  placeholder="e.g., Make it focus more on the psychological aspects of the characters..."
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-zinc-200 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm mb-4"
+                />
+                <div className="flex flex-col sm:flex-row justify-end gap-4">
+                  <Button 
+                    onClick={handleIterate} 
+                    disabled={isIterating || isContinuing || !promptFeedback.trim()} 
+                    variant="outline"
+                    className="border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10 px-8 py-6 rounded-full transition-all text-base"
+                  >
+                    {isIterating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                    Iterate Prompt
+                  </Button>
+                  <Button 
+                    onClick={handleContinue} 
+                    disabled={isContinuing || isIterating} 
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-8 py-6 rounded-full transition-all shadow-lg shadow-indigo-500/20 text-base"
+                  >
+                    {isContinuing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5 fill-current" />}
+                    Approve and Generate Plan
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {currentStatus === 'awaiting_approval' && currentStageDisplay === 'plan_review' && (
+          <section className="py-8">
+            <div className="mb-8">
+              <h2 className="text-2xl font-sora font-bold text-zinc-100 flex items-center gap-3 mb-2">
+                <Check className="w-6 h-6 text-emerald-400" />
+                Plan Generated
+              </h2>
+              <p className="text-sm text-zinc-400">Review the structural plan for your content before executing the full pipeline.</p>
+            </div>
+            
+            <Card className="border-zinc-800 bg-zinc-900/30">
+              <CardContent className="p-6">
+                <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-6 text-zinc-200 min-h-[300px] text-sm leading-relaxed overflow-auto">
+                  {project.plan ? (
+                    <div className="space-y-6">
+                      {project.plan.contentStrategy && (
+                        <div>
+                          <h4 className="font-bold text-indigo-400 mb-2 border-b border-zinc-800 pb-2">Content Strategy</h4>
+                          <p className="text-zinc-300">{project.plan.contentStrategy}</p>
+                        </div>
+                      )}
+                      
+                      {project.plan.structure && project.plan.structure.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-indigo-400 mb-3 border-b border-zinc-800 pb-2">Document Structure</h4>
+                          <div className="space-y-4">
+                            {project.plan.structure.map((section: any, idx: number) => (
+                              <div key={idx} className="bg-zinc-900/50 p-4 rounded-md border border-zinc-800/50">
+                                <div className="flex justify-between items-start mb-2">
+                                  <span className="font-semibold text-zinc-200">{section.title}</span>
+                                  <Badge variant="outline" className="text-xs text-zinc-500 border-zinc-700">
+                                    ~{section.estimatedWords} words
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-zinc-400">{section.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {project.plan.searchQueries && project.plan.searchQueries.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-indigo-400 mb-2 border-b border-zinc-800 pb-2">Search Queries</h4>
+                          <ul className="list-disc list-inside text-xs text-zinc-300 space-y-1">
+                            {project.plan.searchQueries.map((query: string, idx: number) => (
+                              <li key={idx}>{query}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-zinc-500 italic">No plan data available.</p>
+                  )}
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <Button 
+                    onClick={handleExecuteResearch} 
+                    disabled={isExecuting} 
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-8 py-6 rounded-full transition-all shadow-lg shadow-indigo-500/20 text-lg"
+                  >
+                    {isExecuting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5 fill-current" />}
+                    Approve and Start Research
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {currentStatus === 'awaiting_approval' && currentStageDisplay === 'research_review' && (
+          <section className="py-8">
+            <div className="mb-8">
+              <h2 className="text-2xl font-sora font-bold text-zinc-100 flex items-center gap-3 mb-2">
+                <Check className="w-6 h-6 text-emerald-400" />
+                Research Completed
+              </h2>
+              <p className="text-sm text-zinc-400">Review the key insights and sources. You can guide the researcher to find more specific info or approve and start writing.</p>
+            </div>
+            
+            <Card className="border-zinc-800 bg-zinc-900/30 mb-6">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-zinc-100 mb-4">Research Summary</h3>
+                <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-6 text-zinc-200 min-h-[200px] text-sm leading-relaxed overflow-auto space-y-4">
+                  {project.research?.keyInsights ? (
+                    <>
+                      <div>
+                        <span className="font-semibold text-indigo-400 block mb-2">Key Insights:</span>
+                        <ul className="list-disc list-inside space-y-2 text-zinc-300">
+                          {project.research.keyInsights.map((insight: string, i: number) => (
+                            <li key={i}>{insight}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-indigo-400 block mb-2">Top Sources:</span>
+                        <div className="flex flex-wrap gap-2">
+                          {project.research.sources?.slice(0, 5).map((s: any, i: number) => (
+                            <Badge key={i} variant="secondary" className="bg-zinc-800 text-zinc-400 hover:text-zinc-200">
+                              <a href={s.url} target="_blank" rel="noreferrer">{new URL(s.url).hostname}</a>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-zinc-500 italic">No research data available.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-zinc-800 bg-zinc-900/30 border-dashed">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-zinc-100 mb-2">Guide Researcher</h3>
+                <p className="text-xs text-zinc-400 mb-4">Want the agent to dig deeper into something? Add URLs or specific search terms.</p>
+                <textarea
+                  value={researchFeedback}
+                  onChange={(e) => setResearchFeedback(e.target.value)}
+                  placeholder="e.g., Look specifically for the 2024 quarterly reports from this URL: https://example.com/data"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-zinc-200 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm mb-4"
+                />
+                <div className="flex flex-col sm:flex-row justify-end gap-4">
+                  <Button 
+                    onClick={handleIterateResearch} 
+                    disabled={isIteratingResearch || isExecutingWriting || !researchFeedback.trim()} 
+                    variant="outline"
+                    className="border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10 px-8 py-6 rounded-full transition-all text-base"
+                  >
+                    {isIteratingResearch ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                    Redo Research
+                  </Button>
+                  <Button 
+                    onClick={handleExecuteWriting} 
+                    disabled={isExecutingWriting || isIteratingResearch} 
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-8 py-6 rounded-full transition-all shadow-lg shadow-indigo-500/20 text-base"
+                  >
+                    {isExecutingWriting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5 fill-current" />}
+                    Approve and Start Writing
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {currentStatus === 'awaiting_approval' && currentStageDisplay === 'evaluation_review' && (
+          <section className="py-8">
+            <div className="mb-8">
+              <h2 className="text-2xl font-sora font-bold text-zinc-100 flex items-center gap-3 mb-2">
+                <Check className="w-6 h-6 text-emerald-400" />
+                Draft & Evaluation Ready
+              </h2>
+              <p className="text-sm text-zinc-400">Review the AI draft and the evaluator's critique. You can iterate with the writer or finalize the project.</p>
+            </div>
+            
+            <Card className="border-zinc-800 bg-zinc-900/30 mb-6">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-bold text-zinc-100 mb-4">Evaluator Report</h3>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-6 text-zinc-200 min-h-[300px] text-sm leading-relaxed overflow-auto space-y-4">
+                      {project.evaluation ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-zinc-400">Score:</span>
+                            <span className="text-2xl font-bold text-emerald-400">{project.evaluation.score}/100</span>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-red-400 block mb-1">Issues Found:</span>
+                            <ul className="list-disc list-inside text-xs text-zinc-400 space-y-1">
+                              {project.evaluation.issues.map((issue: string, i: number) => (
+                                <li key={i}>{issue}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-indigo-400 block mb-1">Suggestions:</span>
+                            <ul className="list-disc list-inside text-xs text-zinc-400 space-y-1">
+                              {project.evaluation.suggestions.map((s: string, i: number) => (
+                                <li key={i}>{s}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-zinc-500 italic">No evaluation data available.</p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-zinc-100 mb-4">Content Preview</h3>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-6 text-zinc-200 min-h-[300px] text-xs leading-relaxed overflow-auto font-serif">
+                      {project.output?.content ? (
+                        <div className="prose prose-invert max-w-none whitespace-pre-wrap">
+                          {project.output.content.slice(0, 1000)}...
+                          <p className="mt-4 text-indigo-400 font-sans italic">View full document in the Trace section below.</p>
+                        </div>
+                      ) : (
+                        <p className="text-zinc-500 italic">No content generated yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-zinc-800 bg-zinc-900/30 border-dashed">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-zinc-100 mb-2">Iterate with Writer</h3>
+                <p className="text-xs text-zinc-400 mb-4">Provide specific instructions to the writer to fix the issues found during evaluation.</p>
+                <textarea
+                  value={evaluationFeedback}
+                  onChange={(e) => setEvaluationFeedback(e.target.value)}
+                  placeholder="e.g., The evaluator mentioned the tone was too formal. Please rewrite the introduction to be more conversational..."
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-zinc-200 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm mb-4"
+                />
+                <div className="flex flex-col sm:flex-row justify-end gap-4">
+                  <Button 
+                    onClick={handleIterateWriter} 
+                    disabled={isIteratingWriter || isFinalizing || !evaluationFeedback.trim()} 
+                    variant="outline"
+                    className="border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10 px-8 py-6 rounded-full transition-all text-base"
+                  >
+                    {isIteratingWriter ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                    Rewrite with Feedback
+                  </Button>
+                  <Button 
+                    onClick={handleFinalize} 
+                    disabled={isFinalizing || isIteratingWriter} 
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-8 py-6 rounded-full transition-all shadow-lg shadow-emerald-500/20 text-base"
+                  >
+                    {isFinalizing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
+                    Finalize and Complete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* Pipeline Trace - Visibility into all stages */}
+        {(project.prompt || project.plan || project.research || project.output || project.evaluation) && (
+          <section className="pt-12 border-t border-zinc-800/50 mt-12">
+            <div className="mb-8">
+              <h2 className="text-2xl font-sora font-bold text-zinc-100 flex items-center gap-3 mb-2">
+                <Sparkles className="w-6 h-6 text-indigo-400" />
+                Pipeline Trace
+              </h2>
+              <p className="text-sm text-zinc-400">View the detailed outputs generated by the AI agents at every stage of the process.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {project.prompt && (
+                <Card className="border-zinc-800 bg-zinc-900/30">
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full" />
+                      PromptWriter
+                    </h3>
+                    <div className="text-xs text-zinc-400 bg-zinc-950 p-4 rounded-md overflow-auto max-h-80 whitespace-pre-wrap font-mono leading-relaxed border border-zinc-800/50">
+                      {project.prompt.finalPrompt}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {project.plan && (
+                <Card className="border-zinc-800 bg-zinc-900/30">
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full" />
+                      Planner
+                    </h3>
+                    <div className="text-xs text-zinc-300 bg-zinc-950 p-4 rounded-md overflow-auto max-h-80 space-y-4 border border-zinc-800/50">
+                      <div>
+                        <span className="font-semibold text-indigo-400 block mb-1 uppercase tracking-wider text-[10px]">Strategy:</span>
+                        <span className="text-zinc-400">{project.plan.contentStrategy}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-indigo-400 block mb-2 uppercase tracking-wider text-[10px]">Structure:</span>
+                        <ul className="space-y-2">
+                          {project.plan.structure?.map((s: any, i: number) => (
+                            <li key={i} className="border-l-2 border-zinc-800 pl-3 py-0.5">
+                              <span className="font-medium text-zinc-200 block">{s.title}</span>
+                              <span className="text-zinc-500 text-[10px]">{s.estimatedWords} words</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {project.research && (
+                <Card className="border-zinc-800 bg-zinc-900/30">
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      Researcher
+                    </h3>
+                    <div className="text-xs text-zinc-300 bg-zinc-950 p-4 rounded-md overflow-auto max-h-80 space-y-4 border border-zinc-800/50">
+                      <div>
+                        <span className="font-semibold text-indigo-400 block mb-2 uppercase tracking-wider text-[10px]">Key Insights:</span>
+                        <ul className="list-disc list-inside space-y-2 text-zinc-400">
+                          {project.research.keyInsights?.map((insight: string, i: number) => (
+                            <li key={i} className="leading-relaxed">{insight}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-indigo-400 block mb-2 uppercase tracking-wider text-[10px]">Sources:</span>
+                        <ul className="space-y-1.5">
+                          {project.research.sources?.map((s: any, i: number) => (
+                            <li key={i} className="truncate">
+                              <a href={s.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">
+                                {s.title || s.url}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {project.output && (
+                <Card className="border-zinc-800 bg-zinc-900/30 md:col-span-2 lg:col-span-1">
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                      Writer (Full Draft)
+                    </h3>
+                    <div className="text-xs text-zinc-300 bg-zinc-950 p-4 rounded-md overflow-auto max-h-80 border border-zinc-800/50 font-serif leading-relaxed">
+                      <div className="prose prose-invert prose-xs max-w-none whitespace-pre-wrap">
+                        {project.output.content}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {project.evaluation && (
+                <Card className="border-zinc-800 bg-zinc-900/30 md:col-span-2 lg:col-span-1">
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-zinc-100 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                      Evaluator
+                    </h3>
+                    <div className="text-xs text-zinc-300 bg-zinc-950 p-4 rounded-md overflow-auto max-h-80 space-y-4 border border-zinc-800/50">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-zinc-400 uppercase tracking-wider text-[10px]">Quality Score:</span>
+                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">{project.evaluation.score}/100</Badge>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-red-400 block mb-2 uppercase tracking-wider text-[10px]">Issues:</span>
+                        <ul className="list-disc list-inside space-y-1 text-zinc-400">
+                          {project.evaluation.issues?.map((issue: string, i: number) => (
+                            <li key={i}>{issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-indigo-400 block mb-2 uppercase tracking-wider text-[10px]">Suggestions:</span>
+                        <ul className="list-disc list-inside space-y-1 text-zinc-400">
+                          {project.evaluation.suggestions?.map((s: string, i: number) => (
+                            <li key={i}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           </section>

@@ -30,7 +30,19 @@ export const promptOutputSchema = z.object({
     length: z.string(),
     keyRequirements: z.array(z.string()),
   }),
-  finalPrompt: z.string(),
+  // Preprocess: if LLM returns finalPrompt as an object (e.g. {ROLE:..., CONTEXT:...}),
+  // auto-flatten it into a readable string before validation.
+  finalPrompt: z.preprocess(
+    (val) => {
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        return Object.entries(val as Record<string, unknown>)
+          .map(([key, v]) => `[${key.toUpperCase()}] ${v}`)
+          .join('\n\n');
+      }
+      return val;
+    },
+    z.string()
+  ),
 });
 
 export const planOutputSchema = z.object({
