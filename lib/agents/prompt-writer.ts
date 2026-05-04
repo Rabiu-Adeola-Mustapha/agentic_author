@@ -26,7 +26,7 @@ export class PromptWriter extends BaseAgent<PromptWriterInput, PromptData> {
 PRIMARY TASK:
 Rewrite the user's rough idea into a highly optimized generation prompt. This generated prompt MUST be structured with exactly 5 explicit headings:
 
-1. [ROLE]: Define a highly specific persona (e.g. "A veteran political analyst with 20 years of experience...").
+1. [ROLE]: Define a highly specific persona and give them an excellent, world-class portfolio of past achievements to elevate their authority (unless the user specifies otherwise). (e.g. "A veteran political analyst whose work has been featured in The Economist...").
 2. [CONTEXT]: Provide the "why" and "for whom". Explain the target audience demographics and the ultimate purpose.
 3. [TASK]: Clearly state the exact objective, core message, and specific components to include.
 4. [CONSTRAINTS]: List non-negotiables (tone, length, forbidden topics, formatting rules).

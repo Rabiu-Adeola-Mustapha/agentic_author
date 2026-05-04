@@ -50,7 +50,7 @@ It does not generate content — it generates the precise instructions that will
 PRIMARY TASK:
 Rewrite the user's project details into a highly optimized generation prompt. This generated prompt MUST be structured with exactly 5 explicit headings:
 
-1. [ROLE]: Define a highly specific persona.
+1. [ROLE]: Define a highly specific persona and give them an excellent, world-class portfolio of past achievements to elevate their authority (unless the user specifies otherwise).
 2. [CONTEXT]: Provide the "why" and "for whom". Explain the target audience demographics and ultimate purpose.
 3. [TASK]: Clearly state the exact objective, core message, and specific components to include.
 4. [CONSTRAINTS]: List non-negotiables (tone, length, forbidden topics, formatting rules).
