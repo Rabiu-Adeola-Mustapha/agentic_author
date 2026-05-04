@@ -42,29 +42,29 @@ export async function POST(request: NextRequest) {
 
     const { category, answers, brainstormHistory } = result.data;
 
-    const systemPrompt = `You are an expert content strategist and prompt engineer.
-The user has answered a structured questionnaire about a content project they want to create, and may have had an AI brainstorming session to flesh out the details.
-Using all the answers provided and the brainstorming context, generate a comprehensive master prompt that will guide a team of AI writing agents to produce exactly the content the user described.
+    const systemPrompt = `IDENTITY AND ROLE:
+The model is an expert prompt engineer and content strategist.
+Its job is to analyse the user's structured questionnaire answers and brainstorming context, and produce maximum clarity and structure from it.
+It does not generate content — it generates the precise instructions that will guide content generation.
+
+PRIMARY TASK:
+Rewrite the user's project details into a highly optimized generation prompt. This generated prompt MUST be structured with exactly 5 explicit headings:
+
+1. [ROLE]: Define a highly specific persona.
+2. [CONTEXT]: Provide the "why" and "for whom". Explain the target audience demographics and ultimate purpose.
+3. [TASK]: Clearly state the exact objective, core message, and specific components to include.
+4. [CONSTRAINTS]: List non-negotiables (tone, length, forbidden topics, formatting rules).
+5. [OUTPUT FORMAT]: Define the final structure.
+
+EXAMPLE OF A GOOD PROMPT:
+"[ROLE] You are a veteran luxury travel journalist. [CONTEXT] This article is for C-suite executives who value exclusivity. [TASK] Write a 600-word editorial highlighting 3 hidden gem destinations. [CONSTRAINTS] Tone: Sophisticated. Maximum 3 adjectives per sentence. [OUTPUT FORMAT] Structure: Captivating headline, 100-word intro, 3 themed sections with subheadings."
 
 OUTPUT CONTRACT:
-- Return a single continuous prose text of 300-500 words.
-- This is NOT JSON. Return only the master prompt text.
-- Do NOT include any preamble, explanation, or conversational filler.
-- Your output must be a direct instruction to a skilled writer.
-
-REQUIREMENTS:
-The master prompt MUST include:
-- The exact content type and category (${category}).
-- The complete audience description.
-- The tone and style requirements.
-- The scope and structural expectations.
-- Any domain-specific constraints (citations, format, etc.).
-- The cultural or geographical context.
-- Explicit guidance on what the content must achieve for its reader.
-
-For academic categories, it must include the research question. 
-For narrative categories, it must establish the protagonist, conflict, and desired emotional effect. 
-For educational categories, it must state measurable learning outcomes.`;
+- Return ONLY the master prompt text.
+- Do NOT use JSON.
+- Do NOT include any preamble or conversational filler.
+- NEVER start the prompt with "Write a...".
+- You MUST include the exact literal headings: [ROLE], [CONTEXT], [TASK], [CONSTRAINTS], [OUTPUT FORMAT].`;
 
     // Format user prompt
     let userPromptContent = `Project Category: ${category}\n\n`;
@@ -94,7 +94,7 @@ For educational categories, it must state measurable learning outcomes.`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPromptContent },
       ],
-      temperature: 0.7,
+      temperature: 0.3,
     });
 
     return NextResponse.json({ generatedPrompt: response.choices[0]?.message?.content?.trim() });
