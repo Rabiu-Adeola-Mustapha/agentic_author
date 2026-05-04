@@ -6,14 +6,7 @@ import { ProjectModel } from '@/lib/db/models/Project';
 import { z } from 'zod';
 import { validateAgentOutput, AgentValidationError } from '@/lib/guardrails/output-validator';
 
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': process.env.NEXTAUTH_URL || 'http://localhost:3000',
-    'X-Title': 'Agentic Author',
-  },
-});
+// OpenAI client will be instantiated dynamically inside the agent to ensure process.env is loaded
 
 export abstract class BaseAgent<TInput extends AgentInput, TOutput> {
   abstract readonly name: string;
@@ -54,6 +47,15 @@ export abstract class BaseAgent<TInput extends AgentInput, TOutput> {
 
     console.log(`[${this.name}] Calling LLM with model:`, this.model);
     try {
+      const openrouter = new OpenAI({
+        baseURL: 'https://openrouter.ai/api/v1',
+        apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
+        defaultHeaders: {
+          'HTTP-Referer': process.env.NEXTAUTH_URL || 'http://localhost:3000',
+          'X-Title': 'Agentic Author',
+        },
+      });
+
       const response = await openrouter.chat.completions.create({
         model: this.model,
         messages: [
